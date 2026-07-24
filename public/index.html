@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rose Buds Public School</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="site-header">
+        <a
+          class="brand-mark"
+          href="#top"
+          aria-label="Rose Buds Public School home"
+        >
+          <img
+            src="/assets/rose-buds-logo.png"
+            alt="Rose Buds Public School logo"
+          />
+          <span>
+            Rose Buds Public School
+            <small>Chheharta, Amritsar</small>
+          </span>
+        </a>
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="#about">About</a>
+          <a href="#gallery">Gallery</a>
+          <a href="#news">News</a>
+          <a href="#facilities">Facilities</a>
+          <a href="#contact">Contact</a>
+          <a class="nav-cta" href="#loginView">Portal</a>
+        </nav>
+        <button class="ghost" id="logoutButton" hidden>Logout</button>
+      </header>
+
+      <div id="publicWebsite">
+        <section class="hero" id="top">
+          <div class="hero-copy">
+            <p class="eyebrow">Admissions open for the new academic session</p>
+            <h1 id="schoolName">Rose Buds Public School</h1>
+            <p id="schoolTagline">
+              A disciplined, caring school community in Amritsar focused on
+              academics, character, activities, and parent communication.
+            </p>
+            <div class="hero-tags" aria-label="School highlights">
+              <span>Academic Excellence</span>
+              <span>UPI Fee Portal</span>
+              <span>Co-curricular Growth</span>
+              <span>Secure OTP</span>
+            </div>
+            <div class="hero-actions">
+              <a class="button-link" href="#loginView">Open Portal</a>
+              <a class="button-link secondary-link" href="#gallery"
+                >Explore Campus</a
+              >
+              <a class="button-link secondary-link" href="#contact"
+                >Contact Office</a
+              >
+            </div>
+          </div>
+          <div class="premium-showcase" data-tilt aria-label="School overview">
+            <div class="showcase-toolbar">
+              <span></span>
+              <span></span>
+              <span></span>
+              <strong>Live School Portal</strong>
+            </div>
+            <div class="showcase-grid">
+              <div class="showcase-logo">
+                <img
+                  src="/assets/rose-buds-logo.png"
+                  alt="Rose Buds Public School emblem"
+                />
+                <strong>Character is the greatest virtue.</strong>
+              </div>
+              <div class="showcase-photo">
+                <img
+                  src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80"
+                  alt="Classroom learning"
+                />
+              </div>
+              <div class="showcase-metric">
+                <span>Founded</span>
+                <strong>1997</strong>
+              </div>
+              <div class="showcase-metric accent">
+                <span>Students</span>
+                <strong>3000+</strong>
+              </div>
+              <div class="showcase-pay">
+                <span>Parent fee status</span>
+                <strong>Paid / Due / Class</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="quick-info" aria-label="School quick information">
+          <div>
+            <span>Founded</span>
+            <strong>1997</strong>
+          </div>
+          <div>
+            <span>Students Educated</span>
+            <strong>3000+</strong>
+          </div>
+          <div>
+            <span>Faculty</span>
+            <strong>50+</strong>
+          </div>
+          <div>
+            <span>Phone</span>
+            <strong>+91 94630 11687</strong>
+          </div>
+        </section>
+
+        <section class="operations-strip" aria-label="Portal capabilities">
+          <div>
+            <strong>UPI Fee Payments</strong>
+            <span
+              >Parent payments through Razorpay UPI checkout with instant
+              receipts</span
+            >
+          </div>
+          <div>
+            <strong>Secure Access</strong>
+            <span>SMS OTP verification for parent and student portals</span>
+          </div>
+          <div>
+            <strong>Complete Records</strong>
+            <span
+              >View fees, payments, receipts, and student information in one
+              place</span
+            >
+          </div>
+        </section>
+
+        <section class="admission-board" id="admissions">
+          <div class="admission-copy">
+            <p class="eyebrow">Admissions & parent services</p>
+            <h2>Everything families need before they visit the office</h2>
+            <p>
+              A strong school website should guide parents clearly, build
+              confidence, and make office workflows easier. This section brings
+              admissions, campus strengths, fee payment, and contact details
+              into one clear path.
+            </p>
+            <a class="button-link" href="#contact">Talk to School Office</a>
+          </div>
+          <div class="admission-steps">
+            <article>
+              <span>01</span>
+              <strong>Enquiry</strong>
+              <p>
+                Parents contact the office or visit the school with basic
+                student details.
+              </p>
+            </article>
+            <article>
+              <span>02</span>
+              <strong>School Visit</strong>
+              <p>
+                Families understand facilities, learning approach, activities,
+                and class availability.
+              </p>
+            </article>
+            <article>
+              <span>03</span>
+              <strong>Account Issued</strong>
+              <p>
+                The school creates student and parent portal accounts after
+                admission approval.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="campus-showcase" id="gallery">
+          <div class="section-head">
+            <p class="eyebrow">Campus life</p>
+            <h2>
+              Colorful learning, sports, labs, and everyday school moments
+            </h2>
+            <p>
+              Public listings show classroom, extra-curricular, sports, lab, and
+              user-submitted photo categories for Rose Buds Public School. The
+              gallery below is designed for those school-approved photos.
+            </p>
+          </div>
+          <div class="gallery-controls" aria-label="Gallery filters">
+            <button class="gallery-filter active" data-gallery="all">
+              All
+            </button>
+            <button class="gallery-filter" data-gallery="classroom">
+              Classroom
+            </button>
+            <button class="gallery-filter" data-gallery="sports">Sports</button>
+            <button class="gallery-filter" data-gallery="lab">Lab</button>
+          </div>
+          <div class="photo-grid">
+            <article class="photo-card tall" data-category="classroom">
+              <img
+                src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1000&q=80"
+                alt="Bright classroom learning environment"
+              />
+              <div>
+                <span>Classroom</span>
+                <strong>Focused academic learning</strong>
+              </div>
+            </article>
+            <article class="photo-card" data-category="sports">
+              <img
+                src="https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=900&q=80"
+                alt="Students playing outdoor sports"
+              />
+              <div>
+                <span>Sports</span>
+                <strong>Karate, skating, yoga, games</strong>
+              </div>
+            </article>
+            <article class="photo-card" data-category="lab">
+              <img
+                src="https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80"
+                alt="Science lab learning setup"
+              />
+              <div>
+                <span>Lab</span>
+                <strong>Practical discovery</strong>
+              </div>
+            </article>
+            <article class="photo-card wide" data-category="classroom">
+              <img
+                src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1100&q=80"
+                alt="Teacher helping students in class"
+              />
+              <div>
+                <span>School Day</span>
+                <strong>Guided by trained staff</strong>
+              </div>
+            </article>
+          </div>
+          <div class="source-note">
+            <a
+              href="https://www.justdial.com/Amritsar/Rose-Buds-Public-School-Near-Gayatri-Temple-Chheharta/0183PX183-X183-170925181141-G4T8_BZDET/photos"
+              target="_blank"
+              rel="noreferrer"
+              >View public Rose Buds photo listing</a
+            >
+            <a
+              href="https://www.bing.com/maps/search?name=Rose+Buds+Public+School&trfc=&mepi=0%7E%7EEmbedded%7ELargeMapLink&FORM=MPSRPL&style=r&q=Rose+Buds+Public+School&ss=id.ypid%3AYNFACEF0237F9D87F&ppois=31.636823654174805_74.80619812011719_Rose+Buds+Public+School&cp=31.636824%7E74.806198&lvl=15"
+              target="_blank"
+              rel="noreferrer"
+              >Open map listing</a
+            >
+          </div>
+        </section>
+
+        <section class="news-page" id="news">
+          <div class="section-head">
+            <p class="eyebrow">Gallery & News</p>
+            <h2>School moments, competition wins, and campus updates</h2>
+            <p>
+              Latest achievements and activities can be posted by the school
+              from the admin portal.
+            </p>
+          </div>
+          <div id="newsGrid" class="news-grid"></div>
+        </section>
+
+        <section class="content-band" id="about">
+          <div>
+            <p class="eyebrow">About the school</p>
+            <h2>Nurturing every child from bud to bloom</h2>
+          </div>
+          <div class="body-copy">
+            <p>
+              Rose Buds Public School was founded under Rose Buds Education
+              Society, led by Mrs. Davinder Kaur and inspired by founding father
+              Col. Satpal Singh. The school was built around a simple promise:
+              guide young learners with discipline, care, and quality education
+              so they grow into responsible citizens.
+            </p>
+            <div class="mission-grid">
+              <div>
+                <h3>Mission</h3>
+                <p>Empower every student to achieve academic excellence.</p>
+              </div>
+              <div>
+                <h3>Vision</h3>
+                <p>
+                  A nurturing ground for lifelong learners to explore, create,
+                  and thrive.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content-band" id="facilities">
+          <div>
+            <p class="eyebrow">Facilities</p>
+            <h2>A practical campus for academics and activities</h2>
+          </div>
+          <div class="facility-grid">
+            <article>
+              Quality education at reasonable fees near the residence area.
+            </article>
+            <article>Fluent English base with CCE pattern learning.</article>
+            <article>
+              Social responsibility awareness and value education.
+            </article>
+            <article>
+              Co-curricular activities and multiple intelligence development.
+            </article>
+            <article>Smart class technology powered by MAX XSEED.</article>
+            <article>
+              Sports including karate, skating, yoga, Gatka, basketball,
+              badminton, and volleyball.
+            </article>
+            <article>
+              Dance, music, sports coaching, regular examinations, and trained
+              staff.
+            </article>
+            <article>
+              15+ classrooms and 3+ labs supporting daily learning.
+            </article>
+          </div>
+        </section>
+
+        <section class="content-band parent-experience">
+          <div>
+            <p class="eyebrow">For families</p>
+            <h2>Clear communication from admission to fee receipt</h2>
+          </div>
+          <div class="journey-list">
+            <div>
+              <span>01</span>
+              <strong>School-created accounts</strong>
+              <p>
+                Parent and student accounts are issued by the office, keeping
+                records controlled and clean.
+              </p>
+            </div>
+            <div>
+              <span>02</span>
+              <strong>Parent payment portal</strong>
+              <p>
+                Parents view their child, dues, payment details, and receipts in
+                one place.
+              </p>
+            </div>
+            <div>
+              <span>03</span>
+              <strong>Online fee payments</strong>
+              <p>
+                Secure UPI-based payment system for convenient school fee
+                transactions.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="trust-section">
+          <div class="section-head">
+            <p class="eyebrow">Why families trust Rose Buds</p>
+            <h2>
+              A balanced school experience with academics, values, activities,
+              and visibility
+            </h2>
+          </div>
+          <div class="trust-grid">
+            <article>
+              <span>Academic Care</span>
+              <strong
+                >Structured learning with regular examinations and trained
+                staff.</strong
+              >
+            </article>
+            <article>
+              <span>Parent Visibility</span>
+              <strong
+                >Parents can view dues, receipts, and student-linked fee
+                records.</strong
+              >
+            </article>
+            <article>
+              <span>Activities</span>
+              <strong
+                >Sports, yoga, music, dance, karate, skating, and co-curricular
+                growth.</strong
+              >
+            </article>
+            <article>
+              <span>Administration</span>
+              <strong
+                >School-controlled accounts keep student data clean and
+                secure.</strong
+              >
+            </article>
+          </div>
+        </section>
+
+        <section class="content-band contact-band" id="contact">
+          <div>
+            <p class="eyebrow">Contact</p>
+            <h2>Visit or contact the school office</h2>
+          </div>
+          <div class="contact-grid">
+            <p>
+              <strong>Address:</strong> Opp. Gayatri Temple, Raj Avenue, Kale
+              Road, Chheharta, Amritsar.
+            </p>
+            <p><strong>Phone:</strong> +91 94630 11687</p>
+            <p><strong>Email:</strong> sims_rosebuds@yahoo.com</p>
+            <p>
+              <strong>Hours:</strong> Summer 07:40 AM - 02:00 PM | Winter 08:15
+              AM - 02:30 PM
+            </p>
+            <a
+              class="button-link"
+              href="https://www.bing.com/maps/search?name=Rose+Buds+Public+School&ppois=31.636823654174805_74.80619812011719_Rose+Buds+Public+School"
+              target="_blank"
+              rel="noreferrer"
+              >Open Map</a
+            >
+          </div>
+        </section>
+
+        <section class="faq-band">
+          <div class="section-head">
+            <p class="eyebrow">Parent questions</p>
+            <h2>Quick answers before login</h2>
+          </div>
+          <div class="faq-list">
+            <button class="faq-item" type="button">
+              <span>Who creates parent and student accounts?</span>
+              <strong
+                >School authority only. Families login after the school office
+                issues credentials.</strong
+              >
+            </button>
+            <button class="faq-item" type="button">
+              <span>Can parents pay fees online?</span>
+              <strong
+                >Yes. Parents can view their child, fee due, bank details, UPI
+                details, and pay through the secure portal.</strong
+              >
+            </button>
+            <button class="faq-item" type="button">
+              <span>How long does OTP verification take?</span>
+              <strong
+                >SMS OTP is sent instantly. Verify within 5 minutes to access
+                your account.</strong
+              >
+            </button>
+          </div>
+        </section>
+
+        <footer class="site-footer">
+          <div>
+            <img
+              src="/assets/rose-buds-logo.png"
+              alt="Rose Buds Public School logo"
+            />
+            <h2>Rose Buds Public School</h2>
+            <p>
+              Opp. Gayatri Temple, Raj Avenue, Kale Road, Chheharta, Amritsar.
+            </p>
+          </div>
+          <div class="footer-links">
+            <a href="#admissions">Admissions</a>
+            <a href="#gallery">Gallery</a>
+            <a href="#news">News</a>
+            <a href="#loginView">Portal</a>
+          </div>
+          <div class="footer-contact">
+            <strong>+91 94630 11687</strong>
+            <span>sims_rosebuds@yahoo.com</span>
+          </div>
+        </footer>
+      </div>
+
+      <section class="portal-intro">
+        <div>
+          <p class="eyebrow">Secure school portal</p>
+          <h2>Student, parent, and teacher access</h2>
+          <p>
+            Parents can pay fees online, students can view records, and teachers
+            can review class data. Administrators access a separate secure
+            portal.
+          </p>
+        </div>
+        <div class="portal-preview">
+          <div class="preview-top">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="preview-row strong"></div>
+          <div class="preview-row"></div>
+          <div class="preview-row short"></div>
+          <div class="preview-pills">
+            <span>Paid</span>
+            <span>Due</span>
+            <span>Class</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="loginView" class="auth-grid">
+        <div class="login-panel">
+          <h2>Portal Login</h2>
+          <form id="loginForm">
+            <label>
+              Role
+              <select id="roleHint">
+                <option value="">Select portal role</option>
+                <option value="student">Student</option>
+                <option value="parent">Parent</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </label>
+            <label>
+              Email
+              <input id="email" type="email" autocomplete="username" required />
+            </label>
+            <label>
+              Password
+              <input
+                id="password"
+                type="password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+            <button type="submit">Login</button>
+          </form>
+          <p id="loginMessage" class="message"></p>
+          <hr
+            style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0"
+          />
+          <p style="color: #6b7280; font-size: 0.9rem; margin: 12px 0">
+            Are you the school administrator?
+          </p>
+          <a
+            href="/admin"
+            style="
+              display: inline-block;
+              border: 2px solid #059669;
+              background: #059669;
+              color: white;
+              padding: 0.7rem 1.2rem;
+              border-radius: 12px;
+              text-decoration: none;
+              font-weight: 700;
+              transition: all 0.3s ease;
+              width: 100%;
+              text-align: center;
+              box-sizing: border-box;
+            "
+            >Go to Admin Portal</a
+          >
+        </div>
+
+        <div class="demo-panel">
+          <h2>Secure Portal Services</h2>
+          <div class="portal-service-list">
+            <div>
+              <strong>School-created accounts</strong>
+              <span
+                >Parents and students login only after the school office creates
+                credentials.</span
+              >
+            </div>
+            <div>
+              <strong>SMS OTP security</strong>
+              <span
+                >Parent and student portal access is protected with a 5-minute
+                OTP.</span
+              >
+            </div>
+            <div>
+              <strong>UPI-only fees</strong>
+              <span
+                >Parent fee payment is routed through Razorpay UPI
+                checkout.</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="otpView" class="otp-screen" hidden>
+        <div class="otp-card">
+          <button class="ghost small" id="backToLogin" type="button">
+            Back to Login
+          </button>
+          <p class="eyebrow">Secure verification</p>
+          <h2>Enter OTP</h2>
+          <p class="muted">
+            An SMS OTP will be sent to the registered mobile number. OTP is
+            valid for 5 minutes.
+          </p>
+
+          <form id="otpChoiceForm">
+            <div class="sms-only-note">
+              <strong>SMS OTP</strong>
+              <span id="otpChoiceHelp" class="muted"></span>
+            </div>
+            <button type="submit">Send OTP</button>
+          </form>
+
+          <form id="otpForm" hidden>
+            <label id="smsOtpLabel">
+              SMS OTP
+              <input
+                id="smsOtp"
+                inputmode="numeric"
+                maxlength="6"
+                autocomplete="one-time-code"
+                required
+              />
+            </label>
+            <p id="otpHelp" class="muted"></p>
+            <button type="submit">Verify OTP</button>
+          </form>
+          <p id="otpMessage" class="message"></p>
+        </div>
+      </section>
+
+      <section id="portalView" hidden>
+        <div class="portal-head">
+          <div>
+            <p class="eyebrow" id="roleLabel"></p>
+            <h2 id="welcomeTitle"></h2>
+          </div>
+          <p id="noticeText"></p>
+        </div>
+
+        <div id="summary" class="summary-grid"></div>
+        <div id="mainContent"></div>
+      </section>
+    </main>
+
+    <template id="studentRowTemplate">
+      <tr>
+        <td data-field="studentId"></td>
+        <td data-field="name"></td>
+        <td data-field="className"></td>
+        <td data-field="totalFees"></td>
+        <td data-field="paidAmount"></td>
+        <td data-field="dueAmount"></td>
+        <td><span data-field="status" class="status-pill"></span></td>
+      </tr>
+    </template>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Portal - Rose Buds Public School</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section
+        id="adminLoginView"
+        class="otp-screen"
+        style="
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          padding: 42px 20px;
+        "
+      >
+        <div
+          class="otp-card"
+          style="
+            width: min(560px, 100%);
+            border-radius: 16px;
+            background: linear-gradient(
+              135deg,
+              rgba(240, 253, 250, 0.8),
+              rgba(240, 249, 255, 0.5)
+            );
+            backdrop-filter: blur(20px);
+            box-shadow:
+              0 20px 50px rgba(5, 150, 105, 0.15),
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            padding: 42px;
+          "
+        >
+          <div style="text-align: center; margin-bottom: 28px">
+            <img
+              src="/assets/rose-buds-logo.png"
+              alt="Rose Buds Public School logo"
+              style="
+                width: 80px;
+                height: 80px;
+                object-fit: contain;
+                margin: 0 auto;
+                display: block;
+                background: white;
+                border-radius: 12px;
+                padding: 8px;
+              "
+            />
+          </div>
+          <p class="eyebrow" style="text-align: center">
+            School Administration
+          </p>
+          <h2
+            style="
+              margin: 10px 0 28px;
+              font-size: clamp(2.2rem, 5vw, 2.8rem);
+              background: linear-gradient(135deg, #059669, #3b82f6);
+              -webkit-background-clip: text;
+              background-clip: text;
+              color: transparent;
+              font-weight: 900;
+              text-align: center;
+            "
+          >
+            Admin Login
+          </h2>
+
+          <form id="adminLoginForm" style="display: grid; gap: 16px">
+            <label
+              style="
+                display: grid;
+                gap: 0.4rem;
+                font-size: 0.92rem;
+                font-weight: 800;
+              "
+            >
+              Email
+              <input
+                id="adminEmail"
+                type="email"
+                autocomplete="username"
+                required
+                style="
+                  width: 100%;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 12px;
+                  padding: 0.75rem;
+                  background: white;
+                  color: #0f1419;
+                "
+              />
+            </label>
+            <label
+              style="
+                display: grid;
+                gap: 0.4rem;
+                font-size: 0.92rem;
+                font-weight: 800;
+              "
+            >
+              Password
+              <input
+                id="adminPassword"
+                type="password"
+                autocomplete="current-password"
+                required
+                style="
+                  width: 100%;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 12px;
+                  padding: 0.75rem;
+                  background: white;
+                  color: #0f1419;
+                "
+              />
+            </label>
+            <button
+              type="submit"
+              style="
+                border: 0;
+                border-radius: 12px;
+                padding: 0.9rem 1.3rem;
+                background: linear-gradient(135deg, #059669 0%, #3b82f6 100%);
+                color: white;
+                cursor: pointer;
+                font-weight: 700;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+                width: 100%;
+                margin-top: 8px;
+                font-size: 1rem;
+              "
+            >
+              Login
+            </button>
+          </form>
+          <p
+            id="adminLoginMessage"
+            class="message"
+            style="margin-top: 16px; text-align: center; min-height: 20px"
+          ></p>
+
+          <hr
+            style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0"
+          />
+
+          <div style="text-align: center">
+            <p style="color: #6b7280; font-size: 0.9rem; margin: 0 0 12px">
+              Not an admin?
+            </p>
+            <a
+              href="/"
+              style="
+                display: inline-block;
+                border: 2px solid #059669;
+                background: white;
+                color: #059669;
+                padding: 0.7rem 1.2rem;
+                border-radius: 12px;
+                text-decoration: none;
+                font-weight: 700;
+                transition: all 0.3s ease;
+              "
+              >Go to Parent/Student Portal</a
+            >
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="adminOtpView"
+        class="otp-screen"
+        hidden
+        style="
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          padding: 42px 20px;
+        "
+      >
+        <div
+          class="otp-card"
+          style="
+            width: min(560px, 100%);
+            border-radius: 16px;
+            background: linear-gradient(
+              135deg,
+              rgba(240, 253, 250, 0.8),
+              rgba(240, 249, 255, 0.5)
+            );
+            backdrop-filter: blur(20px);
+            box-shadow:
+              0 20px 50px rgba(5, 150, 105, 0.15),
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            padding: 42px;
+          "
+        >
+          <button
+            id="adminBackToLogin"
+            class="ghost small"
+            type="button"
+            style="
+              border: 1px solid #e5e7eb;
+              background: white;
+              color: #059669;
+              border-radius: 8px;
+              padding: 0.55rem 0.75rem;
+              font-weight: 700;
+              cursor: pointer;
+              margin-bottom: 22px;
+            "
+          >
+            Back to Login
+          </button>
+          <p class="eyebrow" style="text-align: center">Secure verification</p>
+          <h2
+            style="
+              margin: 10px 0 16px;
+              font-size: clamp(2.2rem, 5vw, 2.8rem);
+              background: linear-gradient(135deg, #059669, #3b82f6);
+              -webkit-background-clip: text;
+              background-clip: text;
+              color: transparent;
+              font-weight: 900;
+              text-align: center;
+            "
+          >
+            Enter OTP
+          </h2>
+          <p
+            style="
+              color: #6b7280;
+              margin: 0 0 20px;
+              text-align: center;
+              line-height: 1.6;
+            "
+          >
+            An SMS OTP will be sent to the registered mobile number. OTP is
+            valid for 5 minutes.
+          </p>
+
+          <form id="adminOtpChoiceForm" style="display: grid; gap: 16px">
+            <div
+              class="sms-only-note"
+              style="
+                display: grid;
+                gap: 6px;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 1rem;
+                background: white;
+              "
+            >
+              <strong style="color: #059669">SMS OTP</strong>
+              <span
+                id="adminOtpChoiceHelp"
+                style="color: #6b7280; font-size: 0.9rem"
+              ></span>
+            </div>
+            <button
+              type="submit"
+              style="
+                border: 0;
+                border-radius: 12px;
+                padding: 0.9rem 1.3rem;
+                background: linear-gradient(135deg, #059669 0%, #3b82f6 100%);
+                color: white;
+                cursor: pointer;
+                font-weight: 700;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+              "
+            >
+              Send OTP
+            </button>
+          </form>
+
+          <form id="adminOtpForm" hidden style="display: grid; gap: 16px">
+            <label
+              id="adminSmsOtpLabel"
+              style="
+                display: grid;
+                gap: 0.4rem;
+                font-size: 0.92rem;
+                font-weight: 800;
+              "
+            >
+              SMS OTP
+              <input
+                id="adminSmsOtp"
+                inputmode="numeric"
+                maxlength="6"
+                autocomplete="one-time-code"
+                required
+                style="
+                  width: 100%;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 12px;
+                  padding: 0.75rem;
+                  background: white;
+                  color: #0f1419;
+                "
+              />
+            </label>
+            <p
+              id="adminOtpHelp"
+              style="color: #6b7280; margin: 0; font-size: 0.9rem"
+            ></p>
+            <button
+              type="submit"
+              style="
+                border: 0;
+                border-radius: 12px;
+                padding: 0.9rem 1.3rem;
+                background: linear-gradient(135deg, #059669 0%, #3b82f6 100%);
+                color: white;
+                cursor: pointer;
+                font-weight: 700;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+              "
+            >
+              Verify OTP
+            </button>
+          </form>
+          <p
+            id="adminOtpMessage"
+            class="message"
+            style="margin-top: 16px; text-align: center; min-height: 20px"
+          ></p>
+        </div>
+      </section>
+
+      <section id="adminPortalView" hidden style="padding: 40px 20px">
+        <div
+          class="portal-head"
+          style="
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: start;
+            gap: 20px;
+            margin-bottom: 32px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: white;
+            padding: 28px;
+          "
+        >
+          <div>
+            <p
+              class="eyebrow"
+              id="adminRoleLabel"
+              style="
+                margin: 0 0 0.6rem;
+                color: #dc2626;
+                text-transform: uppercase;
+                font-size: 0.8rem;
+                letter-spacing: 0.5px;
+                font-weight: 900;
+              "
+            ></p>
+            <h2
+              id="adminWelcomeTitle"
+              style="
+                margin: 0;
+                font-size: clamp(1.7rem, 3vw, 2.7rem);
+                line-height: 1.05;
+              "
+            ></h2>
+          </div>
+          <button
+            id="adminLogoutButton"
+            style="
+              border: 1px solid #e5e7eb;
+              background: white;
+              color: #059669;
+              border-radius: 8px;
+              padding: 0.7rem 1.2rem;
+              font-weight: 700;
+              cursor: pointer;
+              transition: all 0.3s ease;
+            "
+          >
+            Logout
+          </button>
+        </div>
+        <div id="adminMainContent"></div>
+      </section>
+    </main>
+
+    <!-- Add Student Modal -->
+    <div id="addStudentModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); place-items: center; z-index: 100; padding: 20px; backdrop-filter: blur(4px);">
+      <div style="background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 24px; align-items: center;">
+          <h3 style="margin: 0; font-size: 1.5rem; color: #0f1419;">Add New Student</h3>
+          <button type="button" id="closeModalBtn" style="border: none; background: none; font-size: 1.8rem; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+
+        <form id="addStudentForm" style="display: grid; gap: 16px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <input type="text" id="newStdName" placeholder="Student Name" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <input type="text" id="newStdClass" placeholder="Class (e.g. 10-A)" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <input type="email" id="newStdEmail" placeholder="Student Email" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <input type="tel" id="newStdPhone" placeholder="Student Phone" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <!-- NEW FIELD -->
+            <input type="text" id="newStdPassword" placeholder="Set Student Password" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f0fdf4;">
+          </div>
+          
+          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;">
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <input type="text" id="newParentName" placeholder="Parent Name" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <input type="tel" id="newParentPhone" placeholder="Parent Phone" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <input type="email" id="newParentEmail" placeholder="Parent Email" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <!-- NEW FIELD -->
+            <input type="text" id="newParentPassword" placeholder="Set Parent Password" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f0fdf4;">
+          </div>
+          
+          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;">
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <input type="number" id="newTotalFees" placeholder="Total Fees" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <input type="number" id="newPaidAmount" placeholder="Initial Paid" value="0" style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <input type="date" id="newDueDate" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-family: inherit;">
+          </div>
+
+          <button type="submit" style="margin-top: 12px; border: 0; border-radius: 12px; padding: 1rem; background: linear-gradient(135deg, #059669 0%, #3b82f6 100%); color: white; cursor: pointer; font-weight: 700; font-size: 1rem;">
+            Save Student & Generate Logins
+          </button>
+        </form>
+
+    <script src="/admin.js"></script>
+  </body>
+</html>

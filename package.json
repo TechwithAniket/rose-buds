@@ -1,0 +1,23 @@
+{
+  "name": "school-portal",
+  "version": "1.0.0",
+  "description": "Full stack school website with role portals, 2FA, fee payment tracking, and admin controls.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "school",
+    "portal",
+    "fees"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "prisma": "^6.19.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^17.4.2"
+  }
+}

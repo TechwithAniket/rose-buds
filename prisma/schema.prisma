@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  role         String
+  name         String
+  email        String    @unique
+  phone        String
+  passwordHash String
+  twoFactor    Boolean   @default(false)
+  studentId    String?   // For student role
+  children     String[]  // Array of student IDs for parent role
+  className    String?   // For teacher role
+  
+  paymentsMade Payment[] @relation("PaidBy")
+}
+
+model Student {
+  studentId    String    @id
+  name         String
+  className    String
+  parentUserId String
+  studentUserId String
+  totalFees    Int       @default(0)
+  paidAmount   Int       @default(0)
+  dueDate      String
+  
+  payments     Payment[]
+}
+
+model Payment {
+  id           String   @id @default(uuid())
+  studentId    String
+  amount       Int
+  mode         String
+  reference    String
+  paidByUserId String
+  paidAt       DateTime @default(now())
+  status       String
+  messageSent  Boolean  @default(false)
+
+  student      Student  @relation(fields: [studentId], references: [studentId])
+  paidBy       User     @relation("PaidBy", fields: [paidByUserId], references: [id])
+}
+
+model News {
+  id       String @id @default(uuid())
+  title    String
+  category String
+  summary  String
+  image    String
+  date     String
+}
