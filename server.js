@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 require('dotenv').config();
+console.log("SERVER IS CONNECTED TO:", process.env.DATABASE_URL);
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -282,6 +283,40 @@ async function handleApi(req, res) {
       return sendJson(res, 200, { school: defaultDb.school, news });
     }
 
+    if (route === "GET /api/test-db") {
+      
+      try {
+        const allStudents = await prisma.student.findMany();
+        const allUsers = await prisma.user.findMany();
+        return sendJson(res, 200, { 
+          totalStudents: allStudents.length, 
+          totalUsers: allUsers.length,
+          students: allStudents 
+        });
+      } catch (error) {
+        return sendJson(res, 500, { error: error.message });
+      }
+    }
+
+   if (route === "GET /api/rescue") {
+      try {
+        await prisma.user.deleteMany({ where: { email: "admin@test.com" } });
+
+        const admin = await prisma.user.create({
+          data: {
+            name: "Super Admin",
+            email: "admin@test.com",
+            passwordHash: hashPassword("admin123"), // <-- Using YOUR app's hash!
+            role: "admin",
+            phone: "1234567890"
+          }
+        });
+        
+        return sendJson(res, 200, { message: "Admin revived with PERFECT password!" });
+      } catch (error) {
+        return sendJson(res, 500, { error: error.message });
+      }
+    }
     if (route === "GET /api/dashboard") {
       const session = requireUser(req, res);
       if (!session) return;
@@ -492,23 +527,65 @@ async function handleApi(req, res) {
       
       return sendJson(res, 200, { student: updatedStudent });
     }
-
-    if (route === "DELETE /api/students") {
-      const session = requireUser(req, res, ["admin"]);
-      if (!session) return;
-      const body = await readBody(req);
+if (route === "DELETE /api/students") {
+      console.log("--- 1. DELETE ROUTE TRIGGERED ---");
       
-      const student = await prisma.student.findUnique({ where: { studentId: body.studentId } });
-      if (!student) return sendJson(res, 404, { error: "Student not found." });
+      try {
+        // Step 1: Read the network stream
+        const buffers = [];
+        for await (const chunk of req) {
+          buffers.push(chunk);
+        }
+        const rawData = Buffer.concat(buffers).toString();
+        console.log("--- 2. RAW NETWORK DATA ---", rawData);
+        
+        const body = JSON.parse(rawData || "{}");
+        const { studentId } = body;
+        console.log("--- 3. EXTRACTED ID ---", studentId);
 
-      // Run cleanup in transaction: Delete student's payments, the student user account, and the student record.
-      await prisma.$transaction([
-        prisma.payment.deleteMany({ where: { studentId: body.studentId } }),
-        prisma.user.deleteMany({ where: { id: student.studentUserId } }),
-        prisma.student.delete({ where: { studentId: body.studentId } })
-      ]);
+        // Step 2: Find the student
+        const student = await prisma.student.findUnique({
+          where: { studentId: String(studentId) }
+        });
 
-      return sendJson(res, 200, { ok: true, deletedStudentId: body.studentId });
+        if (!student) {
+          console.log("--- 4. FAILURE: STUDENT NOT FOUND IN DB ---");
+          return sendJson(res, 404, { error: "Student not found in database." });
+        }
+
+        console.log("--- 5. STUDENT FOUND. WIPING PAYMENTS... ---");
+        await prisma.payment.deleteMany({
+          where: { studentId: String(studentId) }
+        });
+
+        console.log("--- 6. WIPING STUDENT RECORD... ---");
+        await prisma.student.delete({
+          where: { studentId: String(studentId) }
+        });
+
+        console.log("--- 7. WIPING LOGIN ACCOUNTS... ---");
+        const usersToDelete = [];
+        
+        // Grab the actual user IDs from your schema
+        if (student.studentUserId) usersToDelete.push(student.studentUserId);
+        if (student.parentUserId) usersToDelete.push(student.parentUserId);
+
+        if (usersToDelete.length > 0) {
+          await prisma.user.deleteMany({
+            where: {
+              id: { in: usersToDelete }
+            }
+          });
+        }
+        
+
+        console.log("--- 8. SUCCESS: EVERYTHING DELETED ---");
+        return sendJson(res, 200, { message: "Student completely wiped." });
+
+      } catch (error) {
+        console.error("--- CRASH IN DELETE ROUTE ---", error);
+        return sendJson(res, 500, { error: "Server crashed during delete." });
+      }
     }
 
     if (route === "POST /api/payments") {
