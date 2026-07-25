@@ -392,15 +392,13 @@
       </section>
     </main>
 
-    <!-- Add Student Modal -->
+   <!-- Add Student Modal -->
     <div id="addStudentModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); place-items: center; z-index: 100; padding: 20px; backdrop-filter: blur(4px);">
       <div style="background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
-        
         <div style="display: flex; justify-content: space-between; margin-bottom: 24px; align-items: center;">
           <h3 style="margin: 0; font-size: 1.5rem; color: #0f1419;">Add New Student</h3>
           <button type="button" id="closeModalBtn" style="border: none; background: none; font-size: 1.8rem; cursor: pointer; color: #6b7280;">&times;</button>
         </div>
-
         <form id="addStudentForm" style="display: grid; gap: 16px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <input type="text" id="newStdName" placeholder="Student Name" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -409,35 +407,54 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
             <input type="email" id="newStdEmail" placeholder="Student Email" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
             <input type="tel" id="newStdPhone" placeholder="Student Phone" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
-            <!-- NEW FIELD -->
             <input type="text" id="newStdPassword" placeholder="Set Student Password" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f0fdf4;">
           </div>
-          
           <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;">
-          
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <input type="text" id="newParentName" placeholder="Parent Name" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
             <input type="tel" id="newParentPhone" placeholder="Parent Phone" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <input type="email" id="newParentEmail" placeholder="Parent Email" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
-            <!-- NEW FIELD -->
             <input type="text" id="newParentPassword" placeholder="Set Parent Password" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f0fdf4;">
           </div>
-          
           <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;">
-          
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
             <input type="number" id="newTotalFees" placeholder="Total Fees" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
             <input type="number" id="newPaidAmount" placeholder="Initial Paid" value="0" style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
             <input type="date" id="newDueDate" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-family: inherit;">
           </div>
-
           <button type="submit" style="margin-top: 12px; border: 0; border-radius: 12px; padding: 1rem; background: linear-gradient(135deg, #059669 0%, #3b82f6 100%); color: white; cursor: pointer; font-weight: 700; font-size: 1rem;">
             Save Student & Generate Logins
           </button>
         </form>
+      </div>
+    </div>
 
+    <!-- Edit Student Modal -->
+    <div id="editStudentModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); place-items: center; z-index: 100; padding: 20px; backdrop-filter: blur(4px);">
+      <div style="background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 24px; align-items: center;">
+          <h3 style="margin: 0; font-size: 1.5rem; color: #0f1419;">Edit Student</h3>
+          <button type="button" id="closeEditModalBtn" style="border: none; background: none; font-size: 1.8rem; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        <form id="editStudentForm" style="display: grid; gap: 16px;">
+          <input type="hidden" id="editStdId">
+          <input type="text" id="editStdName" placeholder="Student Name" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <input type="text" id="editStdClass" placeholder="Class (e.g. 10-A)" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <input type="number" id="editTotalFees" placeholder="Total Fees" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <input type="number" id="editPaidAmount" placeholder="Paid Amount" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          </div>
+          <input type="date" id="editDueDate" required style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-family: inherit;">
+          <button type="submit" style="margin-top: 12px; border: 0; border-radius: 12px; padding: 1rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; cursor: pointer; font-weight: 700; font-size: 1rem;">
+            Update Student
+          </button>
+        </form>
+      </div>
+    </div>
+
+   
     <script src="/admin.js"></script>
   </body>
 </html>

@@ -80,18 +80,14 @@ async function handleAdminLogin(e) {
 
     if (response.requiresOtp) {
       state.challengeId = response.challengeId;
-      $("#adminOtpChoiceHelp").textContent =
-        `Registered mobile: ${response.phone}`;
+      $("#adminOtpChoiceHelp").textContent = `Registered mobile: ${response.phone}`;
       showAdminOtp();
     } else {
-
       state.user = response.user;
-     
       await loadAdminDashboard();
       showAdminPortal();
     }
   } catch (error) {
-   
     setAdminMessage(error.message, true);
   }
 }
@@ -109,8 +105,7 @@ async function handleAdminOtpRequest(e) {
     $("#adminOtpChoiceHelp").textContent = response.delivery;
     $("#adminOtpChoiceForm").hidden = true;
     $("#adminOtpForm").hidden = false;
-    $("#adminOtpHelp").textContent =
-      `OTP sent. Valid for ${response.expiresInMinutes} minutes. `;
+    $("#adminOtpHelp").textContent = `OTP sent. Valid for ${response.expiresInMinutes} minutes.`;
   } catch (error) {
     setAdminOtpMessage(error.message, true);
   }
@@ -142,21 +137,45 @@ async function loadAdminDashboard() {
   renderAdminPortal();
 }
 
+// --- GLOBAL CRUD FUNCTIONS ---
+window.deleteStudent = async (studentId) => {
+  if (!confirm(`Are you sure you want to completely delete ${studentId}?\nThis will destroy their user accounts and payment history.`)) return;
+  
+  try {
+    await api("/api/students", { method: "DELETE", body: { studentId } });
+    await loadAdminDashboard();
+  } catch (error) {
+    alert("Failed to delete student: " + error.message);
+  }
+};
+
+window.openEditModal = (studentId) => {
+  const student = state.dashboard.students.find(s => s.studentId === studentId);
+  if (!student) {
+    alert("Error: Student not found in memory.");
+    return;
+  }
+
+  // Pre-fill the form with current database data
+  $("#editStdId").value = student.studentId;
+  $("#editStdName").value = student.name;
+  $("#editStdClass").value = student.className;
+  $("#editTotalFees").value = student.totalFees;
+  $("#editPaidAmount").value = student.paidAmount;
+  $("#editDueDate").value = student.dueDate || "";
+
+  $("#editStudentModal").style.display = "grid";
+};
+// ------------------------------
+
 function renderAdminPortal() {
   const { user, students = [], payments = [], school } = state.dashboard;
 
   $("#adminRoleLabel").textContent = `${user.role} portal`;
   $("#adminWelcomeTitle").textContent = `Welcome, ${user.name}`;
 
-
-  const totalFees = students.reduce(
-    (sum, student) => sum + Number(student.totalFees),
-    0,
-  );
-  const paid = students.reduce(
-    (sum, student) => sum + Number(student.paidAmount),
-    0,
-  );
+  const totalFees = students.reduce((sum, student) => sum + Number(student.totalFees), 0);
+  const paid = students.reduce((sum, student) => sum + Number(student.paidAmount), 0);
   const due = Math.max(totalFees - paid, 0);
 
   const currency = new Intl.NumberFormat("en-IN", {
@@ -205,13 +224,11 @@ function renderAdminPortal() {
             <th style="padding: 16px; text-align: left; font-weight: 700; color: #0f1419;">Paid</th>
             <th style="padding: 16px; text-align: left; font-weight: 700; color: #0f1419;">Due</th>
             <th style="padding: 16px; text-align: left; font-weight: 700; color: #0f1419;">Status</th>
+            <th style="padding: 16px; text-align: left; font-weight: 700; color: #0f1419;">Actions</th>
           </tr>
         </thead>
         <tbody>
-
-          ${students
-            .map(
-              (student) => `
+          ${students.map((student) => `
             <tr style="border-bottom: 1px solid #e5e7eb;">
               <td style="padding: 14px 16px; color: #0f1419;">${student.studentId}</td>
               <td style="padding: 14px 16px; color: #0f1419;">${student.name}</td>
@@ -222,19 +239,19 @@ function renderAdminPortal() {
               <td style="padding: 14px 16px;">
                 <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; ${student.status === "paid" ? "background: #d1fae5; color: #047857;" : "background: #fee2e2; color: #991b1b;"}">${student.status}</span>
               </td>
+              <td style="padding: 14px 16px; white-space: nowrap;">
+                <button onclick="window.openEditModal('${student.studentId}')" style="background: #f59e0b; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; margin-right: 8px;">Edit</button>
+                <button onclick="window.deleteStudent('${student.studentId}')" style="background: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700;">Delete</button>
+              </td>
             </tr>
-          `,
-            )
-            .join("")}
+          `).join("")}
         </tbody>
       </table>
     </div>
   `;
 
- 
-$("#adminMainContent").innerHTML = summaryHtml + tableHeaderHtml + studentsTableHtml;
+  $("#adminMainContent").innerHTML = summaryHtml + tableHeaderHtml + studentsTableHtml;
 }
-
 
 async function handleAdminLogout() {
   try {
@@ -256,12 +273,12 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#adminOtpForm").addEventListener("submit", handleAdminOtpVerify);
   $("#adminBackToLogin").addEventListener("click", () => showAdminLogin());
   $("#adminLogoutButton").addEventListener("click", handleAdminLogout);
-// Handle closing modal
+
+  // ADD STUDENT LOGIC
   $("#closeModalBtn").addEventListener("click", () => {
     $("#addStudentModal").style.display = "none";
   });
 
-  // Handle form submission
   $("#addStudentForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     
@@ -270,11 +287,11 @@ document.addEventListener("DOMContentLoaded", () => {
       className: $("#newStdClass").value.trim(),
       studentEmail: $("#newStdEmail").value.trim(),
       studentPhone: $("#newStdPhone").value.trim(),
-      studentPassword: $("#newStdPassword").value, // Captured!
+      studentPassword: $("#newStdPassword").value,
       parentName: $("#newParentName").value.trim(),
       parentEmail: $("#newParentEmail").value.trim(),
       parentPhone: $("#newParentPhone").value.trim(),
-      parentPassword: $("#newParentPassword").value, // Captured!
+      parentPassword: $("#newParentPassword").value,
       totalFees: $("#newTotalFees").value,
       paidAmount: $("#newPaidAmount").value,
       dueDate: $("#newDueDate").value,
@@ -282,20 +299,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const res = await api("/api/students", { method: "POST", body });
-      
-      // Clear form and close modal
       e.target.reset();
       $("#addStudentModal").style.display = "none";
-      
-      // Reload dashboard data to show new student instantly
       await loadAdminDashboard();
-      
-      // Alert the credentials so you can copy them
       alert(`SUCCESS! Student Created.\n\nStudent ID: ${res.student.studentId}\n\nSTUDENT LOGIN:\nEmail: ${res.credentials.studentEmail}\nPassword: ${res.credentials.studentPassword}\n\nPARENT LOGIN:\nEmail: ${res.credentials.parentEmail}\nPassword: ${res.credentials.parentPassword}`);
-      
     } catch (error) {
       alert("Failed to add student: " + error.message);
     }
   });
+
+  // EDIT STUDENT LOGIC
+  $("#closeEditModalBtn").addEventListener("click", () => {
+    $("#editStudentModal").style.display = "none";
+  });
+
+  $("#editStudentForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    const body = {
+      studentId: $("#editStdId").value,
+      name: $("#editStdName").value.trim(),
+      className: $("#editStdClass").value.trim(),
+      totalFees: $("#editTotalFees").value,
+      paidAmount: $("#editPaidAmount").value,
+      dueDate: $("#editDueDate").value,
+    };
+
+    try {
+      await api("/api/students", { method: "PATCH", body });
+      $("#editStudentModal").style.display = "none";
+      await loadAdminDashboard();
+    } catch (error) {
+      alert("Failed to update student: " + error.message);
+    }
+  });
+
   showAdminLogin();
 });
