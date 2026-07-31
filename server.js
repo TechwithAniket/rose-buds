@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 console.log("SERVER IS CONNECTED TO:", process.env.DATABASE_URL);
 const { PrismaClient } = require('@prisma/client');
@@ -179,9 +180,11 @@ async function handleApi(req, res) {
         where: { email: email }
       });
 
-      if (!user || user.passwordHash !== hashPassword(String(body.password || ""))) {
-        return sendJson(res, 401, { error: "Invalid email or password." });
-      }
+    const isValidPassword = await bcrypt.compare(String(body.password || ""), user.passwordHash);
+
+if (!user || !isValidPassword) {
+  return sendJson(res, 401, { error: "Invalid email or password." });
+}
 
       if (user.twoFactor) {
         const challengeId = crypto.randomUUID();
@@ -301,6 +304,16 @@ async function handleApi(req, res) {
    if (route === "GET /api/rescue") {
       try {
         await prisma.user.deleteMany({ where: { email: "admin@test.com" } });
+
+        // Inside your rescue route...
+const secureHash = await bcrypt.hash("admin123", 10); // 10 is the salt rounds
+
+const admin = await prisma.user.create({
+  data: {
+    // ... other fields
+    passwordHash: secureHash, 
+  }
+});
 
         const admin = await prisma.user.create({
           data: {
