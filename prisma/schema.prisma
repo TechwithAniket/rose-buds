@@ -18,6 +18,7 @@ model User {
   studentId    String?   // For student role
   children     String[]  // Array of student IDs for parent role
   className    String?   // For teacher role
+  sessions  Session[]
   
   paymentsMade Payment[] @relation("PaidBy")
 }
@@ -57,4 +58,11 @@ model News {
   summary  String
   image    String
   date     String
+}
+
+model Session {
+  id        String   @id // This will be the session token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
 }

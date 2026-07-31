@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
+
 console.log("SERVER IS CONNECTED TO:", process.env.DATABASE_URL);
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
@@ -11,9 +12,9 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "public");
 
-const sessions = new Map();
-const pendingOtp = new Map();
+// Temporary RAM storage is perfectly fine for OTPs since they expire in 5 minutes anyway.
 const pendingOtpDelivery = new Map();
+const pendingOtp = new Map();
 
 // Keeping static school info in memory since it rarely changes
 const defaultDb = {
@@ -36,9 +37,9 @@ const defaultDb = {
   }
 };
 
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
+// ==========================================
+// UTILITY FUNCTIONS
+// ==========================================
 
 async function dispatchSMS(phone, otpCode) {
   try {
@@ -65,25 +66,6 @@ function parseCookies(req) {
         return [key, decodeURIComponent(value.join("="))];
       }),
   );
-}
-
-function getSession(req) {
-  const token = parseCookies(req).session;
-  if (!token) return null;
-  return sessions.get(token) || null;
-}
-
-function requireUser(req, res, roles) {
-  const session = getSession(req);
-  if (!session) {
-    sendJson(res, 401, { error: "Please login first." });
-    return null;
-  }
-  if (roles && !roles.includes(session.role)) {
-    sendJson(res, 403, { error: "You do not have permission for this action." });
-    return null;
-  }
-  return session;
 }
 
 function readBody(req) {
@@ -127,6 +109,46 @@ function getRequestUrl(req) {
   return new URL(req.url || "/", `http://${host}`);
 }
 
+// ==========================================
+// SECURE DATABASE AUTHENTICATION
+// ==========================================
+
+async function getSession(req) {
+  const token = parseCookies(req).session;
+  if (!token) return null;
+
+  try {
+    const session = await prisma.session.findUnique({
+      where: { id: token },
+      include: { user: true }
+    });
+
+    if (!session || session.expiresAt < new Date()) {
+      return null;
+    }
+    return session.user; // We return the actual user attached to this session
+  } catch (err) {
+    return null;
+  }
+}
+
+async function requireUser(req, res, roles) {
+  const user = await getSession(req);
+  if (!user) {
+    sendJson(res, 401, { error: "Please login first." });
+    return null;
+  }
+  if (roles && !roles.includes(user.role)) {
+    sendJson(res, 403, { error: "You do not have permission for this action." });
+    return null;
+  }
+  return user;
+}
+
+// ==========================================
+// STATIC FILE SERVER
+// ==========================================
+
 function serveStatic(req, res) {
   const urlPath = getRequestUrl(req).pathname;
   const filePath =
@@ -167,11 +189,16 @@ function serveStatic(req, res) {
   });
 }
 
+// ==========================================
+// API ROUTER
+// ==========================================
+
 async function handleApi(req, res) {
   const url = getRequestUrl(req);
   const route = `${req.method} ${url.pathname}`;
 
   try {
+    // --- AUTHENTICATION ROUTES --- //
     if (route === "POST /api/login") {
       const body = await readBody(req);
       const email = String(body.email || "").toLowerCase();
@@ -180,11 +207,13 @@ async function handleApi(req, res) {
         where: { email: email }
       });
 
-    const isValidPassword = await bcrypt.compare(String(body.password || ""), user.passwordHash);
+      if (!user) return sendJson(res, 401, { error: "Invalid email or password." });
 
-if (!user || !isValidPassword) {
-  return sendJson(res, 401, { error: "Invalid email or password." });
-}
+      const isValidPassword = await bcrypt.compare(String(body.password || ""), user.passwordHash);
+
+      if (!isValidPassword) {
+        return sendJson(res, 401, { error: "Invalid email or password." });
+      }
 
       if (user.twoFactor) {
         const challengeId = crypto.randomUUID();
@@ -201,11 +230,19 @@ if (!user || !isValidPassword) {
       }
 
       const token = crypto.randomUUID();
-      sessions.set(token, { userId: user.id, role: user.role });
+      
+      // Save session to Prisma Database
+      await prisma.session.create({
+        data: {
+          id: token,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        }
+      });
       
       res.writeHead(200, {
         "Content-Type": "application/json",
-        "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/`,
+        "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`,
       });
       return res.end(JSON.stringify({ user: publicUser(user) }));
     }
@@ -242,6 +279,7 @@ if (!user || !isValidPassword) {
       const body = await readBody(req);
       const challenge = pendingOtp.get(body.challengeId);
       const smsOtpMatches = challenge?.smsOtp === String(body.smsOtp || "");
+      
       if (!challenge || challenge.expiresAt < Date.now() || !smsOtpMatches) {
         return sendJson(res, 401, { error: "Invalid or expired OTP." });
       }
@@ -250,18 +288,32 @@ if (!user || !isValidPassword) {
       pendingOtp.delete(body.challengeId);
       
       const token = crypto.randomUUID();
-      sessions.set(token, { userId: user.id, role: user.role });
+      
+      // Save session to Prisma Database
+      await prisma.session.create({
+        data: {
+          id: token,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        }
+      });
    
       res.writeHead(200, {
         "Content-Type": "application/json",
-        "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/`,
+        "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`,
       });
       return res.end(JSON.stringify({ user: publicUser(user) }));
     }
 
     if (route === "POST /api/logout") {
       const token = parseCookies(req).session;
-      if (token) sessions.delete(token);
+      if (token) {
+        try {
+          await prisma.session.delete({ where: { id: token } });
+        } catch (err) {
+          // Ignore if the session was already deleted
+        }
+      }
       res.writeHead(200, {
         "Content-Type": "application/json",
         "Set-Cookie": "session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
@@ -270,24 +322,20 @@ if (!user || !isValidPassword) {
     }
 
     if (route === "GET /api/me") {
-      const session = getSession(req);
-      if (!session || !session.userId) {
+      const user = await getSession(req);
+      if (!user) {
         return sendJson(res, 200, { user: null });
       }
-      
-      const user = await prisma.user.findUnique({ where: { id: session.userId } });
-      if (!user) return sendJson(res, 200, { user: null });
-      
       return sendJson(res, 200, { user: publicUser(user) });
     }
 
+    // --- PUBLIC & DEBUG ROUTES --- //
     if (route === "GET /api/public") {
       const news = await prisma.news.findMany({ orderBy: { date: 'desc' } });
       return sendJson(res, 200, { school: defaultDb.school, news });
     }
 
     if (route === "GET /api/test-db") {
-      
       try {
         const allStudents = await prisma.student.findMany();
         const allUsers = await prisma.user.findMany();
@@ -301,15 +349,10 @@ if (!user || !isValidPassword) {
       }
     }
 
-  if (route === "GET /api/rescue") {
+    if (route === "GET /api/rescue") {
       try {
-        // 1. Wipe the old insecure admin
         await prisma.user.deleteMany({ where: { email: "admin@test.com" } });
-
-        // 2. Generate the new, mathematically secure lock
         const secureHash = await bcrypt.hash("admin123", 10);
-
-        // 3. Create the admin with the new lock
         const admin = await prisma.user.create({
           data: {
             name: "Super Admin",
@@ -319,19 +362,16 @@ if (!user || !isValidPassword) {
             phone: "1234567890"
           }
         });
-        
         return sendJson(res, 200, { message: "Admin revived with SECURE bcrypt password!" });
       } catch (error) {
         return sendJson(res, 500, { error: error.message });
       }
     }
-    
-    if (route === "GET /api/dashboard") {
-      const session = requireUser(req, res);
-      if (!session) return;
 
-      const user = await prisma.user.findUnique({ where: { id: session.userId } });
-      if (!user) return sendJson(res, 401, { error: "User session invalid." });
+    // --- PROTECTED ROUTES --- //
+    if (route === "GET /api/dashboard") {
+      const user = await requireUser(req, res); // Await added, returns the user directly
+      if (!user) return;
 
       const studentsRaw = await prisma.student.findMany();
       const students = studentsRaw.map((student) => ({
@@ -403,16 +443,16 @@ if (!user || !isValidPassword) {
     }
 
     if (route === "PATCH /api/school") {
-      const session = requireUser(req, res, ["admin"]);
-      if (!session) return;
+      const user = await requireUser(req, res, ["admin"]); // Await added
+      if (!user) return;
       const body = await readBody(req);
       defaultDb.school = { ...defaultDb.school, ...body };
       return sendJson(res, 200, { school: defaultDb.school });
     }
 
     if (route === "POST /api/students") {
-      const session = requireUser(req, res, ["admin"]);
-      if (!session) return;
+      const user = await requireUser(req, res, ["admin"]); // Await added
+      if (!user) return;
       const body = await readBody(req);
 
       const password = body.studentPassword;
@@ -423,13 +463,17 @@ if (!user || !isValidPassword) {
       }
       const studentId = await getNextStudentId();
 
+      // Secure hashes generated here automatically!
+      const studentHash = await bcrypt.hash(password, 10);
+      const parentHash = await bcrypt.hash(parentPassword, 10);
+
       const studentUser = await prisma.user.create({
         data: {
           role: "student",
           name: body.name,
           email: body.studentEmail,
           phone: body.studentPhone,
-          passwordHash: hashPassword(password),
+          passwordHash: studentHash,
           twoFactor: true,
           studentId: studentId,
         }
@@ -441,7 +485,7 @@ if (!user || !isValidPassword) {
           name: body.parentName,
           email: body.parentEmail,
           phone: body.parentPhone,
-          passwordHash: hashPassword(parentPassword),
+          passwordHash: parentHash,
           twoFactor: true,
           children: [studentId],
         }
@@ -472,8 +516,8 @@ if (!user || !isValidPassword) {
     }
 
     if (route === "POST /api/news") {
-      const session = requireUser(req, res, ["admin"]);
-      if (!session) return;
+      const user = await requireUser(req, res, ["admin"]); // Await added
+      if (!user) return;
       const body = await readBody(req);
 
       const item = await prisma.news.create({
@@ -489,12 +533,11 @@ if (!user || !isValidPassword) {
     }
 
     if (route === "POST /api/razorpay-order") {
-      const session = requireUser(req, res, ["parent"]);
-      if (!session) return;
+      const user = await requireUser(req, res, ["parent"]); // Await added
+      if (!user) return;
       const body = await readBody(req);
       
-      const parent = await prisma.user.findUnique({ where: { id: session.userId } });
-      if (!parent.children.includes(body.studentId)) {
+      if (!user.children.includes(body.studentId)) {
         return sendJson(res, 403, { error: "You can only pay fees for your own child." });
       }
 
@@ -511,16 +554,16 @@ if (!user || !isValidPassword) {
         keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_demo_key",
         studentName: student.name,
         schoolName: defaultDb.school.name,
-        parentName: parent.name,
-        parentPhone: parent.phone,
-        parentEmail: parent.email,
+        parentName: user.name,
+        parentPhone: user.phone,
+        parentEmail: user.email,
         demoMode: !process.env.RAZORPAY_KEY_ID,
       });
     }
 
     if (route === "PATCH /api/students") {
-      const session = requireUser(req, res, ["admin"]);
-      if (!session) return;
+      const user = await requireUser(req, res, ["admin"]); // Await added
+      if (!user) return;
       const body = await readBody(req);
       
       const updatedStudent = await prisma.student.update({
@@ -536,46 +579,40 @@ if (!user || !isValidPassword) {
       
       return sendJson(res, 200, { student: updatedStudent });
     }
-if (route === "DELETE /api/students") {
+
+    if (route === "DELETE /api/students") {
+      // SECURITY FIX: Prevent random people from deleting students!
+      const user = await requireUser(req, res, ["admin"]); 
+      if (!user) return;
+
       console.log("--- 1. DELETE ROUTE TRIGGERED ---");
       
       try {
-        // Step 1: Read the network stream
         const buffers = [];
         for await (const chunk of req) {
           buffers.push(chunk);
         }
         const rawData = Buffer.concat(buffers).toString();
-        console.log("--- 2. RAW NETWORK DATA ---", rawData);
-        
         const body = JSON.parse(rawData || "{}");
         const { studentId } = body;
-        console.log("--- 3. EXTRACTED ID ---", studentId);
 
-        // Step 2: Find the student
         const student = await prisma.student.findUnique({
           where: { studentId: String(studentId) }
         });
 
         if (!student) {
-          console.log("--- 4. FAILURE: STUDENT NOT FOUND IN DB ---");
           return sendJson(res, 404, { error: "Student not found in database." });
         }
 
-        console.log("--- 5. STUDENT FOUND. WIPING PAYMENTS... ---");
         await prisma.payment.deleteMany({
           where: { studentId: String(studentId) }
         });
 
-        console.log("--- 6. WIPING STUDENT RECORD... ---");
         await prisma.student.delete({
           where: { studentId: String(studentId) }
         });
 
-        console.log("--- 7. WIPING LOGIN ACCOUNTS... ---");
         const usersToDelete = [];
-        
-        // Grab the actual user IDs from your schema
         if (student.studentUserId) usersToDelete.push(student.studentUserId);
         if (student.parentUserId) usersToDelete.push(student.parentUserId);
 
@@ -587,8 +624,6 @@ if (route === "DELETE /api/students") {
           });
         }
         
-
-        console.log("--- 8. SUCCESS: EVERYTHING DELETED ---");
         return sendJson(res, 200, { message: "Student completely wiped." });
 
       } catch (error) {
@@ -598,12 +633,11 @@ if (route === "DELETE /api/students") {
     }
 
     if (route === "POST /api/payments") {
-      const session = requireUser(req, res, ["parent"]);
-      if (!session) return;
+      const user = await requireUser(req, res, ["parent"]); // Await added
+      if (!user) return;
       const body = await readBody(req);
       
-      const parent = await prisma.user.findUnique({ where: { id: session.userId } });
-      if (!parent || !parent.children.includes(body.studentId)) {
+      if (!user.children.includes(body.studentId)) {
         return sendJson(res, 403, { error: "You can only pay fees for your own child." });
       }
 
@@ -617,7 +651,7 @@ if (route === "DELETE /api/students") {
             amount: amount,
             mode: body.mode || "UPI",
             reference: body.reference || `LOCAL-${Date.now()}`,
-            paidByUserId: parent.id,
+            paidByUserId: user.id,
             status: "success",
             messageSent: true
           }
