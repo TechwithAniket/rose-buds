@@ -301,35 +301,31 @@ if (!user || !isValidPassword) {
       }
     }
 
-   if (route === "GET /api/rescue") {
+  if (route === "GET /api/rescue") {
       try {
+        // 1. Wipe the old insecure admin
         await prisma.user.deleteMany({ where: { email: "admin@test.com" } });
 
-        // Inside your rescue route...
-const secureHash = await bcrypt.hash("admin123", 10); // 10 is the salt rounds
+        // 2. Generate the new, mathematically secure lock
+        const secureHash = await bcrypt.hash("admin123", 10);
 
-const admin = await prisma.user.create({
-  data: {
-    // ... other fields
-    passwordHash: secureHash, 
-  }
-});
-
+        // 3. Create the admin with the new lock
         const admin = await prisma.user.create({
           data: {
             name: "Super Admin",
             email: "admin@test.com",
-            passwordHash: hashPassword("admin123"), // <-- Using YOUR app's hash!
+            passwordHash: secureHash, 
             role: "admin",
             phone: "1234567890"
           }
         });
         
-        return sendJson(res, 200, { message: "Admin revived with PERFECT password!" });
+        return sendJson(res, 200, { message: "Admin revived with SECURE bcrypt password!" });
       } catch (error) {
         return sendJson(res, 500, { error: error.message });
       }
     }
+    
     if (route === "GET /api/dashboard") {
       const session = requireUser(req, res);
       if (!session) return;
