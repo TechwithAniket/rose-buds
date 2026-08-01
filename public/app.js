@@ -680,3 +680,27 @@ api("/api/me")
 api("/api/public")
   .then(({ news }) => renderNewsItems(news))
   .catch(() => renderNewsItems([]));
+
+  // --- FIX NAVIGATION & SCROLLING ---
+document.querySelectorAll('a[href^="#"]').forEach(link => {
+  link.addEventListener('click', (e) => {
+    const targetId = link.getAttribute('href');
+    
+    // 1. Stop the browser from getting confused
+    e.preventDefault();
+
+    // 2. If the user is in the portal, bring the public website back so they can see the sections
+    if ($("#publicWebsite").hidden) {
+      showLogin(); 
+    }
+
+    // 3. Find the exact section and force a smooth scroll to it
+    const targetElement = document.querySelector(targetId);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Optional: update the URL bar to look professional without reloading the page
+      history.pushState(null, null, targetId);
+    }
+  });
+});
