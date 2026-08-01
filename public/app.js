@@ -6,12 +6,6 @@ const state = {
 
 document.documentElement.classList.add("js-ready");
 
-const demoAccounts = {
-  parent: ["parent@rbps.test", "Parent@123"],
-  student: ["student@rbps.test", "Student@123"],
-  teacher: ["teacher@rbps.test", "Teacher@123"],
-};
-
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
@@ -57,8 +51,8 @@ function resetOtpFlow() {
   $("#otpChoiceForm").hidden = false;
   $("#otpForm").hidden = true;
   $("#smsOtpLabel").hidden = false;
-  $("#smsOtp").required = true;
-  $("#smsOtp").value = "";
+  $("#otpCode").required = true;
+  $("#otpCode").value = "";
   $("#otpHelp").textContent = "";
   $("#otpChoiceHelp").textContent = "";
   setOtpMessage("");
@@ -295,14 +289,14 @@ function renderAdmin() {
           ${renderPayments(payments)}
         </div>
         <div>
-          <h3>Text Message Log</h3>
+          <h3>Verification Email Log</h3>
           ${
             messages
               .map(
                 (message) =>
                   `<div class="receipt"><strong>${message.phone}</strong><p>${message.text}</p></div>`,
               )
-              .join("") || `<p class="muted">No messages sent yet.</p>`
+              .join("") || `<p class="muted">No verification emails sent yet.</p>`
           }
         </div>
       </div>
@@ -387,7 +381,7 @@ async function createStudent(event) {
       body: formData,
     });
     message.style.color = "var(--success)";
-    message.textContent = `Created ${result.student.studentId}. Parent and student credentials are ready for the school office.`;
+    message.textContent = `Created ${result.student.studentId}. Parent and student credentials are ready.`;
     await loadDashboard();
   } catch (error) {
     message.style.color = "var(--danger)";
@@ -420,9 +414,8 @@ function renderParent() {
         <div class="pay-panel">
           <h3>Pay Online</h3>
           <div class="payment-box">
-            <p><strong>Payment method:</strong> Razorpay UPI only</p>
-            <p><strong>UPI apps:</strong> Google Pay, PhonePe, Paytm, BHIM, and bank UPI apps through Razorpay Checkout.</p>
-            <p class="muted">Cards, wallets, and netbanking are disabled in this school fee flow.</p>
+            <p><strong>Payment method:</strong> Razorpay Checkout</p>
+            <p><strong>Supported apps:</strong> Google Pay, PhonePe, Paytm, BHIM, and bank UPI apps.</p>
           </div>
           <form id="paymentForm" class="payment-grid">
             <label>Child
@@ -433,7 +426,7 @@ function renderParent() {
             <label>Amount
               <input name="amount" type="number" min="1" max="${student?.dueAmount || 1}" value="${student?.dueAmount || 1}" required />
             </label>
-            <button type="submit">Pay with Razorpay UPI</button>
+            <button type="submit">Proceed to Payment</button>
           </form>
           <p id="paymentMessage" class="message"></p>
         </div>
@@ -447,34 +440,20 @@ function renderParent() {
   $("#paymentForm").addEventListener("submit", payFees);
 }
 
+// --- FULLY SECURED RAZORPAY VERIFICATION ---
 async function payFees(event) {
   event.preventDefault();
   const payload = Object.fromEntries(new FormData(event.currentTarget));
   const message = $("#paymentMessage");
+  
   try {
     const order = await api("/api/razorpay-order", {
       method: "POST",
       body: payload,
     });
-    const completePayment = async (reference) => {
-      await api("/api/payments", {
-        method: "POST",
-        body: {
-          studentId: payload.studentId,
-          amount: payload.amount,
-          mode: "Razorpay UPI",
-          reference,
-        },
-      });
-      message.style.color = "var(--success)";
-      message.textContent =
-        "UPI payment successful. Receipt and text confirmation have been recorded.";
-      await loadDashboard();
-    };
 
-    if (!window.Razorpay || order.demoMode) {
-      await completePayment(`RAZORPAY-UPI-DEMO-${Date.now()}`);
-      return;
+    if (!window.Razorpay) {
+      throw new Error("Payment gateway is blocked or loading. Please refresh the page.");
     }
 
     const razorpay = new window.Razorpay({
@@ -497,12 +476,37 @@ async function payFees(event) {
         email: order.parentEmail,
         contact: order.parentPhone,
       },
-      theme: {
-        color: "#0d7668",
-      },
+      theme: { color: "#0d7668" },
+      
+      // The Handler now strictly enforces Cryptographic Math
       handler: async (response) => {
-        await completePayment(response.razorpay_payment_id || order.orderId);
+        try {
+          message.style.color = "var(--success)";
+          message.textContent = "Verifying secure payment receipt...";
+          
+          await api("/api/payments", {
+            method: "POST",
+            body: {
+              studentId: payload.studentId,
+              amount: payload.amount,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            },
+          });
+          
+          message.textContent = "Payment successful and cryptographically verified!";
+          setTimeout(() => loadDashboard(), 1500);
+        } catch (err) {
+          message.style.color = "var(--danger)";
+          message.textContent = "Verification failed: " + err.message;
+        }
       },
+    });
+
+    razorpay.on('payment.failed', function (response){
+       message.style.color = "var(--danger)";
+       message.textContent = "Payment Failed: " + response.error.description;
     });
 
     razorpay.open();
@@ -549,7 +553,8 @@ $("#loginForm").addEventListener("submit", async (event) => {
       state.challengeId = result.challengeId;
       $("#loginView").hidden = true;
       $("#otpView").hidden = false;
-      $("#otpChoiceHelp").textContent = `Registered mobile: ${result.phone}`;
+      // Note: Backend still sends phone, but we will wire up the email later
+      $("#otpChoiceHelp").textContent = `Identity verification required for security.`;
       return;
     }
     await loadDashboard();
@@ -568,9 +573,8 @@ $("#otpChoiceForm").addEventListener("submit", async (event) => {
     });
     $("#otpChoiceForm").hidden = true;
     $("#otpForm").hidden = false;
-    $("#smsOtp").value = "";
-    $("#otpHelp").textContent =
-      `${result.delivery}. Valid for 5 minutes.`;
+    $("#otpCode").value = "";
+    $("#otpHelp").textContent = `${result.delivery}. Valid for 5 minutes.`;
   } catch (error) {
     setOtpMessage(error.message);
   }
@@ -583,7 +587,7 @@ $("#otpForm").addEventListener("submit", async (event) => {
       method: "POST",
       body: {
         challengeId: state.challengeId,
-        smsOtp: $("#smsOtp").value,
+        smsOtp: $("#otpCode").value, // Backend still looks for the smsOtp key
       },
     });
     $("#otpForm").hidden = true;
@@ -606,7 +610,7 @@ $("#logoutButton").addEventListener("click", async () => {
 });
 
 $("#roleHint").addEventListener("change", () => {
-  // Role select change handler
+  // Optional Hint logic
 });
 
 document.querySelectorAll(".gallery-filter").forEach((button) => {
