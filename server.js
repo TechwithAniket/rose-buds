@@ -12,11 +12,32 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "public");
 
-// Temporary RAM storage is perfectly fine for OTPs since they expire in 5 minutes anyway.
+// Temporary RAM storage for OTP delivery.
 const pendingOtpDelivery = new Map();
 const pendingOtp = new Map();
 
-// Keeping static school info in memory since it rarely changes
+// --- BOT PROTECTION ---
+const rateLimitMap = new Map();
+
+function checkRateLimit(req, limit = 5, windowMinutes = 15) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const windowStart = now - (windowMinutes * 60 * 1000);
+
+  let requests = rateLimitMap.get(ip) || [];
+  requests = requests.filter(timestamp => timestamp > windowStart);
+
+  if (requests.length >= limit) {
+    rateLimitMap.set(ip, requests); 
+    return false; 
+  }
+
+  requests.push(now);
+  rateLimitMap.set(ip, requests);
+  return true;
+}
+
+// Static school info in memory
 const defaultDb = {
   school: {
     name: "Rose Buds Public School",
@@ -126,7 +147,7 @@ async function getSession(req) {
     if (!session || session.expiresAt < new Date()) {
       return null;
     }
-    return session.user; // We return the actual user attached to this session
+    return session.user;
   } catch (err) {
     return null;
   }
@@ -199,7 +220,12 @@ async function handleApi(req, res) {
 
   try {
     // --- AUTHENTICATION ROUTES --- //
+    
     if (route === "POST /api/login") {
+      if (!checkRateLimit(req, 5, 15)) {
+        return sendJson(res, 429, { error: "Too many login attempts. Please try again in 15 minutes." });
+      }
+      
       const body = await readBody(req);
       const email = String(body.email || "").toLowerCase();
 
@@ -231,23 +257,29 @@ async function handleApi(req, res) {
 
       const token = crypto.randomUUID();
       
-      // Save session to Prisma Database
       await prisma.session.create({
         data: {
           id: token,
           userId: user.id,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
         }
       });
       
+      const isProd = process.env.NODE_ENV === "production";
+      const cookieStr = `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800; ${isProd ? "Secure;" : ""}`;
+
       res.writeHead(200, {
         "Content-Type": "application/json",
-        "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`,
+        "Set-Cookie": cookieStr,
       });
       return res.end(JSON.stringify({ user: publicUser(user) }));
     }
 
     if (route === "POST /api/request-otp") {
+      if (!checkRateLimit(req, 3, 15)) {
+        return sendJson(res, 429, { error: "Too many OTP requests. Please wait." });
+      }
+
       const body = await readBody(req);
       const pending = pendingOtpDelivery.get(body.challengeId);
 
@@ -276,6 +308,10 @@ async function handleApi(req, res) {
     }
 
     if (route === "POST /api/verify-otp") {
+      if (!checkRateLimit(req, 5, 15)) {
+        return sendJson(res, 429, { error: "Too many failed attempts. Try again later." });
+      }
+
       const body = await readBody(req);
       const challenge = pendingOtp.get(body.challengeId);
       const smsOtpMatches = challenge?.smsOtp === String(body.smsOtp || "");
@@ -289,7 +325,6 @@ async function handleApi(req, res) {
       
       const token = crypto.randomUUID();
       
-      // Save session to Prisma Database
       await prisma.session.create({
         data: {
           id: token,
@@ -298,9 +333,12 @@ async function handleApi(req, res) {
         }
       });
    
+      const isProd = process.env.NODE_ENV === "production";
+      const cookieStr = `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800; ${isProd ? "Secure;" : ""}`;
+
       res.writeHead(200, {
         "Content-Type": "application/json",
-        "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`,
+        "Set-Cookie": cookieStr,
       });
       return res.end(JSON.stringify({ user: publicUser(user) }));
     }
@@ -330,6 +368,7 @@ async function handleApi(req, res) {
     }
 
     // --- PUBLIC & DEBUG ROUTES --- //
+    
     if (route === "GET /api/public") {
       const news = await prisma.news.findMany({ orderBy: { date: 'desc' } });
       return sendJson(res, 200, { school: defaultDb.school, news });
@@ -369,8 +408,9 @@ async function handleApi(req, res) {
     }
 
     // --- PROTECTED ROUTES --- //
+    
     if (route === "GET /api/dashboard") {
-      const user = await requireUser(req, res); // Await added, returns the user directly
+      const user = await requireUser(req, res);
       if (!user) return;
 
       const studentsRaw = await prisma.student.findMany();
@@ -443,7 +483,7 @@ async function handleApi(req, res) {
     }
 
     if (route === "PATCH /api/school") {
-      const user = await requireUser(req, res, ["admin"]); // Await added
+      const user = await requireUser(req, res, ["admin"]);
       if (!user) return;
       const body = await readBody(req);
       defaultDb.school = { ...defaultDb.school, ...body };
@@ -451,7 +491,7 @@ async function handleApi(req, res) {
     }
 
     if (route === "POST /api/students") {
-      const user = await requireUser(req, res, ["admin"]); // Await added
+      const user = await requireUser(req, res, ["admin"]);
       if (!user) return;
       const body = await readBody(req);
 
@@ -463,7 +503,6 @@ async function handleApi(req, res) {
       }
       const studentId = await getNextStudentId();
 
-      // Secure hashes generated here automatically!
       const studentHash = await bcrypt.hash(password, 10);
       const parentHash = await bcrypt.hash(parentPassword, 10);
 
@@ -516,7 +555,7 @@ async function handleApi(req, res) {
     }
 
     if (route === "POST /api/news") {
-      const user = await requireUser(req, res, ["admin"]); // Await added
+      const user = await requireUser(req, res, ["admin"]);
       if (!user) return;
       const body = await readBody(req);
 
@@ -533,7 +572,7 @@ async function handleApi(req, res) {
     }
 
     if (route === "POST /api/razorpay-order") {
-      const user = await requireUser(req, res, ["parent"]); // Await added
+      const user = await requireUser(req, res, ["parent"]);
       if (!user) return;
       const body = await readBody(req);
       
@@ -562,7 +601,7 @@ async function handleApi(req, res) {
     }
 
     if (route === "PATCH /api/students") {
-      const user = await requireUser(req, res, ["admin"]); // Await added
+      const user = await requireUser(req, res, ["admin"]);
       if (!user) return;
       const body = await readBody(req);
       
@@ -581,12 +620,9 @@ async function handleApi(req, res) {
     }
 
     if (route === "DELETE /api/students") {
-      // SECURITY FIX: Prevent random people from deleting students!
       const user = await requireUser(req, res, ["admin"]); 
       if (!user) return;
 
-      console.log("--- 1. DELETE ROUTE TRIGGERED ---");
-      
       try {
         const buffers = [];
         for await (const chunk of req) {
@@ -632,8 +668,9 @@ async function handleApi(req, res) {
       }
     }
 
+    // --- SECURE RAZORPAY VERIFICATION --- //
     if (route === "POST /api/payments") {
-      const user = await requireUser(req, res, ["parent"]); // Await added
+      const user = await requireUser(req, res, ["parent"]);
       if (!user) return;
       const body = await readBody(req);
       
@@ -641,26 +678,43 @@ async function handleApi(req, res) {
         return sendJson(res, 403, { error: "You can only pay fees for your own child." });
       }
 
-      const amount = Number(body.amount || 0);
-      if (amount <= 0) return sendJson(res, 400, { error: "Payment amount must be greater than zero." });
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, studentId } = body;
+
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return sendJson(res, 400, { error: "Incomplete payment details. Cryptographic proof missing." });
+      }
+
+      const secret = process.env.RAZORPAY_KEY_SECRET || "rzp_test_demo_secret";
+      const expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(razorpay_order_id + "|" + razorpay_payment_id)
+        .digest("hex");
+
+      if (expectedSignature !== razorpay_signature) {
+        console.error(`🚨 ALERT: Invalid Razorpay Signature from User ${user.email}.`);
+        return sendJson(res, 400, { error: "Payment verification failed. Invalid signature." });
+      }
+      
+      const numAmount = Number(amount || 0);
+      if (numAmount <= 0) return sendJson(res, 400, { error: "Payment amount must be greater than zero." });
 
       const payment = await prisma.$transaction(async (tx) => {
         const newPayment = await tx.payment.create({
           data: {
-            studentId: body.studentId,
-            amount: amount,
-            mode: body.mode || "UPI",
-            reference: body.reference || `LOCAL-${Date.now()}`,
+            studentId: studentId,
+            amount: numAmount,
+            mode: "RAZORPAY",
+            reference: razorpay_payment_id,
             paidByUserId: user.id,
             status: "success",
-            messageSent: true
+            messageSent: false
           }
         });
 
         const updatedStudent = await tx.student.update({
-          where: { studentId: body.studentId },
+          where: { studentId: studentId },
           data: {
-            paidAmount: { increment: amount }
+            paidAmount: { increment: numAmount }
           }
         });
 
