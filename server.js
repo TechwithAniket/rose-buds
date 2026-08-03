@@ -289,33 +289,44 @@ async function handleApi(req, res) {
       });
       return res.end(JSON.stringify({ user: publicUser(user) }));
     }
-
-  if (route === "POST /api/request-otp") {
-      if (!checkRateLimit(req, 3, 15)) {
+if (route === "POST /api/request-otp") {
+      // 1. Separate bucket for OTP requests (limit 10 for testing)
+      if (!checkRateLimit(req, "request_otp", 10, 15)) {
         return sendJson(res, 429, { error: "Too many OTP requests. Please wait." });
       }
 
       const body = await readBody(req);
       const pending = pendingOtpDelivery.get(body.challengeId);
 
+      // 2. Check if the login challenge is valid and hasn't expired
       if (!pending || pending.expiresAt < Date.now()) {
         return sendJson(res, 401, { error: "OTP request expired. Please login again." });
       }
 
+      // 3. Find the real user in the database
       const user = await prisma.user.findUnique({ where: { id: pending.userId } });
+      
+      // 4. Generate the 6-digit mathematical code
       const smsOtp = String(crypto.randomInt(100000, 999999));
 
-      // Send the real email!
-      await dispatchOTP(user.email, smsOtp);
+      // 5. TRY to send the real email and WAIT for Google's response
+      const emailSent = await dispatchOTP(user.email, smsOtp);
+      
+      // 6. If Google/Nodemailer crashed, stop and tell the frontend the truth
+      if (!emailSent) {
+        return sendJson(res, 500, { error: "Server failed to send email. Check Render logs." });
+      }
 
+      // 7. If successful, lock the OTP into RAM for 5 minutes
       pendingOtp.set(body.challengeId, {
         userId: pending.userId,
         method: "email",
-        smsOtp,
+        smsOtp, // Keeping variable name as smsOtp so we don't break verification
         expiresAt: Date.now() + 5 * 60 * 1000,
       });
-      pendingOtpDelivery.delete(body.challengeId);
+      pendingOtpDelivery.delete(body.challengeId); // Clean up the delivery challenge
 
+      // 8. Tell the frontend success
       return sendJson(res, 200, {
         method: "email",
         delivery: `OTP has been emailed to ${user.email}`,
