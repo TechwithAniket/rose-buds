@@ -1,3 +1,4 @@
+const nodemailer = require("nodemailer");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -62,12 +63,26 @@ const defaultDb = {
 // UTILITY FUNCTIONS
 // ==========================================
 
-async function dispatchSMS(phone, otpCode) {
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_APP_PASSWORD,
+  },
+});
+
+async function dispatchOTP(email, otpCode) {
   try {
-    console.log(`[DEV MODE] Mock dispatching SMS to ${phone} with OTP: ${otpCode}`);
+    await transporter.sendMail({
+      from: `"Rose Buds Public School" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Portal Login OTP",
+      text: `Your Rose Buds Public School portal login OTP is: ${otpCode}\n\nThis code is valid for 5 minutes. Do not share it with anyone.`,
+    });
+    console.log(`[SECURE EMAIL] OTP sent successfully to ${email}`);
     return true;
   } catch (error) {
-    console.error("Failed to send SMS:", error);
+    console.error("Failed to send OTP Email:", error);
     return false;
   }
 }
@@ -275,7 +290,7 @@ async function handleApi(req, res) {
       return res.end(JSON.stringify({ user: publicUser(user) }));
     }
 
-    if (route === "POST /api/request-otp") {
+  if (route === "POST /api/request-otp") {
       if (!checkRateLimit(req, 3, 15)) {
         return sendJson(res, 429, { error: "Too many OTP requests. Please wait." });
       }
@@ -290,19 +305,20 @@ async function handleApi(req, res) {
       const user = await prisma.user.findUnique({ where: { id: pending.userId } });
       const smsOtp = String(crypto.randomInt(100000, 999999));
 
-      dispatchSMS(user.phone, smsOtp);
+      // Send the real email!
+      await dispatchOTP(user.email, smsOtp);
 
       pendingOtp.set(body.challengeId, {
         userId: pending.userId,
-        method: "sms",
+        method: "email",
         smsOtp,
         expiresAt: Date.now() + 5 * 60 * 1000,
       });
       pendingOtpDelivery.delete(body.challengeId);
 
       return sendJson(res, 200, {
-        method: "sms",
-        delivery: `OTP has been dispatched to ${user.phone}`,
+        method: "email",
+        delivery: `OTP has been emailed to ${user.email}`,
         expiresInMinutes: 5,
       });
     }
