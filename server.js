@@ -324,7 +324,7 @@ async function handleApi(req, res) {
     }
 
     if (route === "POST /api/verify-otp") {
-      if (!checkRateLimit(req, 5, 15)) {
+      if (!checkRateLimit(req, 20, 15)) {
         return sendJson(res, 429, { error: "Too many failed attempts. Try again later." });
       }
 
