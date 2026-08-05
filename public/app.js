@@ -36,26 +36,18 @@ async function api(path, options = {}) {
 
 function setMessage(text, isError = true) {
   const node = $("#loginMessage");
-  node.textContent = text || "";
-  node.style.color = isError ? "var(--danger)" : "var(--success)";
+  if(node) {
+    node.textContent = text || "";
+    node.style.color = isError ? "var(--danger)" : "var(--success)";
+  }
 }
 
 function setOtpMessage(text, isError = true) {
   const node = $("#otpMessage");
-  node.textContent = text || "";
-  node.style.color = isError ? "var(--danger)" : "var(--success)";
-}
-
-function resetOtpFlow() {
-  state.challengeId = null;
-  $("#otpChoiceForm").hidden = false;
-  $("#otpForm").hidden = true;
-  $("#smsOtpLabel").hidden = false;
-  $("#otpCode").required = true;
-  $("#otpCode").value = "";
-  $("#otpHelp").textContent = "";
-  $("#otpChoiceHelp").textContent = "";
-  setOtpMessage("");
+  if(node) {
+    node.textContent = text || "";
+    node.style.color = isError ? "var(--danger)" : "var(--success)";
+  }
 }
 
 function applySchool(school) {
@@ -74,25 +66,40 @@ async function loadDashboard() {
 function showPortal() {
   $("#publicWebsite").hidden = true;
   $(".portal-intro").hidden = true;
-  $("#loginView").hidden = true;
-  $("#otpView").hidden = true;
+  $("#authView").hidden = true;
   $("#portalView").hidden = false;
   $("#logoutButton").hidden = false;
+}
+
+// --- SINGLE CARD STATE MANAGER ---
+function showAuthCard(state) {
+  $("#loginState").hidden = true;
+  $("#otpState").hidden = true;
+  $("#forgotState").hidden = true;
+  $("#forgotRequestForm").hidden = true;
+  $("#forgotResetForm").hidden = true;
+  $("#authMessage").textContent = "";
+
+  if (state === "login") $("#loginState").hidden = false;
+  if (state === "otp") $("#otpState").hidden = false;
+  if (state === "forgot_req") {
+    $("#forgotState").hidden = false;
+    $("#forgotRequestForm").hidden = false;
+    $("#forgotEmail").value = $("#email").value; 
+  }
+  if (state === "forgot_reset") {
+    $("#forgotState").hidden = false;
+    $("#forgotResetForm").hidden = false;
+  }
 }
 
 function showLogin() {
   $("#publicWebsite").hidden = false;
   $(".portal-intro").hidden = false;
-  $("#loginView").hidden = false;
-  $("#otpView").hidden = true;
-  $("#forgotView").hidden = true; // Added this line!
+  $("#authView").hidden = false; 
   $("#portalView").hidden = true;
   $("#logoutButton").hidden = true;
-  $("#loginForm").hidden = false;
-  
-  // Reset standard messages
-  setMessage("");
-  setOtpMessage("");
+  showAuthCard("login"); 
 }
 
 function metric(label, value) {
@@ -100,14 +107,8 @@ function metric(label, value) {
 }
 
 function renderSummary(students, payments) {
-  const totalFees = students.reduce(
-    (sum, student) => sum + Number(student.totalFees),
-    0,
-  );
-  const paid = students.reduce(
-    (sum, student) => sum + Number(student.paidAmount),
-    0,
-  );
+  const totalFees = students.reduce((sum, student) => sum + Number(student.totalFees), 0);
+  const paid = students.reduce((sum, student) => sum + Number(student.paidAmount), 0);
   const due = Math.max(totalFees - paid, 0);
   $("#summary").innerHTML = [
     metric("Students", students.length),
@@ -206,9 +207,7 @@ function renderPortal() {
 
 function renderAdmin() {
   const { students, payments, messages, school, news = [] } = state.dashboard;
-  const classes = [
-    ...new Set(students.map((student) => student.className)),
-  ].sort();
+  const classes = [...new Set(students.map((student) => student.className))].sort();
 
   $("#mainContent").innerHTML = `
     <div class="workspace">
@@ -278,13 +277,7 @@ function renderAdmin() {
           <button class="wide" type="submit">Publish Update</button>
         </form>
         <div class="news-mini-list">
-          ${news
-            .slice(0, 4)
-            .map(
-              (item) =>
-                `<div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.category)}</span></div>`,
-            )
-            .join("")}
+          ${news.slice(0, 4).map((item) => `<div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.category)}</span></div>`).join("")}
         </div>
       </div>
       <div class="split">
@@ -294,14 +287,7 @@ function renderAdmin() {
         </div>
         <div>
           <h3>Verification Email Log</h3>
-          ${
-            messages
-              .map(
-                (message) =>
-                  `<div class="receipt"><strong>${message.phone}</strong><p>${message.text}</p></div>`,
-              )
-              .join("") || `<p class="muted">No verification emails sent yet.</p>`
-          }
+          ${messages.map((message) => `<div class="receipt"><strong>${message.phone}</strong><p>${message.text}</p></div>`).join("") || `<p class="muted">No verification emails sent yet.</p>`}
         </div>
       </div>
     </div>`;
@@ -325,9 +311,7 @@ function filteredStudents() {
   return students.filter((student) => {
     const matchesStatus = status === "all" || student.status === status;
     const matchesClass = className === "all" || student.className === className;
-    const matchesSearch =
-      !search ||
-      `${student.name} ${student.studentId}`.toLowerCase().includes(search);
+    const matchesSearch = !search || `${student.name} ${student.studentId}`.toLowerCase().includes(search);
     return matchesStatus && matchesClass && matchesSearch;
   });
 }
@@ -341,9 +325,7 @@ function bindStudentDeleteButtons() {
   document.querySelectorAll("[data-delete-student]").forEach((button) => {
     button.addEventListener("click", async () => {
       const studentId = button.dataset.deleteStudent;
-      const confirmed = window.confirm(
-        `Delete student ID ${studentId}? This removes the linked student/parent login and payment records.`,
-      );
+      const confirmed = window.confirm(`Delete student ID ${studentId}? This removes the linked student/parent login and payment records.`);
       if (!confirmed) return;
       await api("/api/students", { method: "DELETE", body: { studentId } });
       await loadDashboard();
@@ -352,21 +334,9 @@ function bindStudentDeleteButtons() {
 }
 
 function exportCsv() {
-  const headers = [
-    "studentId",
-    "name",
-    "className",
-    "totalFees",
-    "paidAmount",
-    "dueAmount",
-    "status",
-  ];
-  const rows = filteredStudents().map((student) =>
-    headers.map((key) => `"${student[key]}"`).join(","),
-  );
-  const blob = new Blob([[headers.join(","), ...rows].join("\n")], {
-    type: "text/csv",
-  });
+  const headers = ["studentId", "name", "className", "totalFees", "paidAmount", "dueAmount", "status"];
+  const rows = filteredStudents().map((student) => headers.map((key) => `"${student[key]}"`).join(","));
+  const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -467,22 +437,9 @@ async function payFees(event) {
       name: order.schoolName,
       description: `Fees for ${order.studentName}`,
       order_id: order.orderId,
-      method: {
-        upi: true,
-        card: false,
-        netbanking: false,
-        wallet: false,
-        emi: false,
-        paylater: false,
-      },
-      prefill: {
-        name: order.parentName,
-        email: order.parentEmail,
-        contact: order.parentPhone,
-      },
+      method: { upi: true, card: false, netbanking: false, wallet: false, emi: false, paylater: false },
+      prefill: { name: order.parentName, email: order.parentEmail, contact: order.parentPhone },
       theme: { color: "#0d7668" },
-      
-      // The Handler now strictly enforces Cryptographic Math
       handler: async (response) => {
         try {
           message.style.color = "var(--success)";
@@ -541,11 +498,29 @@ function renderTeacher() {
     </div>`;
 }
 
-// --- FLUID LOGIN FLOW ---
-$("#loginForm").addEventListener("submit", async (event) => {
+// ==========================================
+// FLUID AUTHENTICATION LISTENERS
+// ==========================================
+
+// Back/Toggle buttons
+$("#showForgotBtn")?.addEventListener("click", () => showAuthCard("forgot_req"));
+$("#backToLoginFromOtp")?.addEventListener("click", () => showAuthCard("login"));
+$("#backToLoginFromForgot")?.addEventListener("click", () => showAuthCard("login"));
+
+$("#logoutButton").addEventListener("click", async () => {
+  await api("/api/logout", { method: "POST" });
+  state.user = null;
+  state.dashboard = null;
+  showLogin();
+});
+
+// 1. Login Form Submit
+$("#loginForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  setMessage("Authenticating...", false); 
-  setOtpMessage("");
+  const msgNode = $("#authMessage");
+  msgNode.style.color = "inherit";
+  msgNode.textContent = "Authenticating..."; 
+  
   const email = $("#email").value;
   const password = $("#password").value;
 
@@ -557,56 +532,51 @@ $("#loginForm").addEventListener("submit", async (event) => {
     
     if (result.requiresOtp) {
       state.challengeId = result.challengeId;
-      $("#loginView").hidden = true;
-      $("#otpView").hidden = false;
-      // UI feels instantaneous - no choice form needed anymore!
-      $("#otpHelp").textContent = `Code sent securely to ${result.email}. Valid for 5 minutes.`;
+      showAuthCard("otp");
+      $("#otpHelp").textContent = `Code sent securely to ${result.email}. Valid for 5 mins.`;
       $("#otpCode").value = "";
+      msgNode.textContent = ""; 
       return;
     }
     await loadDashboard();
   } catch (error) {
-    setMessage(error.message, true);
+    msgNode.style.color = "var(--danger)";
+    msgNode.textContent = error.message;
   }
 });
 
-$("#otpForm").addEventListener("submit", async (event) => {
+// 2. OTP Form Submit
+$("#otpForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const msgNode = $("#authMessage");
+  msgNode.style.color = "inherit";
+  msgNode.textContent = "Verifying...";
+
   try {
     await api("/api/verify-otp", {
       method: "POST",
       body: { challengeId: state.challengeId, smsOtp: $("#otpCode").value },
     });
-    $("#otpForm").hidden = true;
-    $("#otpView").hidden = true;
     await loadDashboard();
   } catch (error) {
-    setOtpMessage(error.message, true);
+    msgNode.style.color = "var(--danger)";
+    msgNode.textContent = error.message;
   }
 });
 
-// --- FORGOT PASSWORD FLOW ---
-$("#showForgotBtn").addEventListener("click", () => {
-  $("#loginView").hidden = true;
-  $("#forgotView").hidden = false;
-  $("#forgotRequestForm").hidden = false;
-  $("#forgotResetForm").hidden = true;
-  $("#forgotMessage").textContent = "";
-  $("#forgotEmail").value = $("#email").value; // Auto-fill if they typed it already
-});
-
-$("#forgotRequestForm").addEventListener("submit", async (event) => {
+// 3. Request Password Reset Submit
+$("#forgotRequestForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const email = $("#forgotEmail").value;
-  const msgNode = $("#forgotMessage");
+  const msgNode = $("#authMessage");
+  
   msgNode.style.color = "inherit";
   msgNode.textContent = "Sending secure reset code...";
   
   try {
     const res = await api("/api/forgot-password", { method: "POST", body: { email } });
     state.challengeId = res.challengeId; 
-    $("#forgotRequestForm").hidden = true;
-    $("#forgotResetForm").hidden = false;
+    showAuthCard("forgot_reset");
     msgNode.textContent = "";
   } catch (err) {
     msgNode.style.color = "var(--danger)";
@@ -614,11 +584,15 @@ $("#forgotRequestForm").addEventListener("submit", async (event) => {
   }
 });
 
-$("#forgotResetForm").addEventListener("submit", async (event) => {
+// 4. Update New Password Submit
+$("#forgotResetForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const otp = $("#forgotOtp").value;
   const newPassword = $("#forgotNewPassword").value;
-  const msgNode = $("#forgotMessage");
+  const msgNode = $("#authMessage");
+  
+  msgNode.style.color = "inherit";
+  msgNode.textContent = "Updating password...";
   
   try {
     await api("/api/reset-password", { 
@@ -627,27 +601,19 @@ $("#forgotResetForm").addEventListener("submit", async (event) => {
     });
     msgNode.style.color = "var(--success)";
     msgNode.textContent = "Password updated! Redirecting to login...";
-    setTimeout(showLogin, 2000); // Send them back to login after 2 seconds
+    setTimeout(() => {
+      showAuthCard("login");
+      msgNode.textContent = "";
+    }, 2000); 
   } catch (err) {
     msgNode.style.color = "var(--danger)";
     msgNode.textContent = err.message;
   }
 });
 
-// Handle back buttons
-$("#backToLogin").addEventListener("click", showLogin);
-$("#backToLoginFromForgot").addEventListener("click", showLogin);
-
-$("#logoutButton").addEventListener("click", async () => {
-  await api("/api/logout", { method: "POST" });
-  state.user = null;
-  state.dashboard = null;
-  showLogin();
-});
-
-$("#roleHint").addEventListener("change", () => {
-  // Optional Hint logic
-});
+// ==========================================
+// PUBLIC UI LISTENERS
+// ==========================================
 
 document.querySelectorAll(".gallery-filter").forEach((button) => {
   button.addEventListener("click", () => {
@@ -717,7 +683,7 @@ api("/api/public")
   .then(({ news }) => renderNewsItems(news))
   .catch(() => renderNewsItems([]));
 
-  // --- FIX NAVIGATION & SCROLLING ---
+// --- FIX NAVIGATION & SCROLLING ---
 document.querySelectorAll('a[href^="#"]').forEach(link => {
   link.addEventListener('click', (e) => {
     const targetId = link.getAttribute('href');

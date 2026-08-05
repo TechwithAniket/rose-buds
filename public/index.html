@@ -29,7 +29,7 @@
           <a href="#news">News</a>
           <a href="#facilities">Facilities</a>
           <a href="#contact">Contact</a>
-          <a class="nav-cta" href="#loginView">Portal</a>
+          <a class="nav-cta" href="#authView">Portal</a>
         </nav>
         <button class="ghost" id="logoutButton" hidden>Logout</button>
       </header>
@@ -50,7 +50,7 @@
               <span>Secure Email OTP</span>
             </div>
             <div class="hero-actions">
-              <a class="button-link" href="#loginView">Open Portal</a>
+              <a class="button-link" href="#authView">Open Portal</a>
               <a class="button-link secondary-link" href="#gallery"
                 >Explore Campus</a
               >
@@ -240,20 +240,6 @@
               </div>
             </article>
           </div>
-          <div class="source-note">
-            <a
-              href="https://www.justdial.com/Amritsar/Rose-Buds-Public-School-Near-Gayatri-Temple-Chheharta/0183PX183-X183-170925181141-G4T8_BZDET/photos"
-              target="_blank"
-              rel="noreferrer"
-              >View public Rose Buds photo listing</a
-            >
-            <a
-              href="https://www.bing.com/maps/search?name=Rose+Buds+Public+School&trfc=&mepi=0%7E%7EEmbedded%7ELargeMapLink&FORM=MPSRPL&style=r&q=Rose+Buds+Public+School&ss=id.ypid%3AYNFACEF0237F9D87F&ppois=31.636823654174805_74.80619812011719_Rose+Buds+Public+School&cp=31.636824%7E74.806198&lvl=15"
-              target="_blank"
-              rel="noreferrer"
-              >Open map listing</a
-            >
-          </div>
         </section>
 
         <section class="news-page" id="news">
@@ -303,28 +289,14 @@
             <h2>A practical campus for academics and activities</h2>
           </div>
           <div class="facility-grid">
-            <article>
-              Quality education at reasonable fees near the residence area.
-            </article>
+            <article>Quality education at reasonable fees near the residence area.</article>
             <article>Fluent English base with CCE pattern learning.</article>
-            <article>
-              Social responsibility awareness and value education.
-            </article>
-            <article>
-              Co-curricular activities and multiple intelligence development.
-            </article>
+            <article>Social responsibility awareness and value education.</article>
+            <article>Co-curricular activities and multiple intelligence development.</article>
             <article>Smart class technology powered by MAX XSEED.</article>
-            <article>
-              Sports including karate, skating, yoga, Gatka, basketball,
-              badminton, and volleyball.
-            </article>
-            <article>
-              Dance, music, sports coaching, regular examinations, and trained
-              staff.
-            </article>
-            <article>
-              15+ classrooms and 3+ labs supporting daily learning.
-            </article>
+            <article>Sports including karate, skating, yoga, Gatka, basketball, badminton, and volleyball.</article>
+            <article>Dance, music, sports coaching, regular examinations, and trained staff.</article>
+            <article>15+ classrooms and 3+ labs supporting daily learning.</article>
           </div>
         </section>
 
@@ -450,7 +422,7 @@
             <button class="faq-item" type="button">
               <span>How long does OTP verification take?</span>
               <strong
-                >SMS OTP is sent instantly. Verify within 5 minutes to access
+                >Email OTP is sent instantly. Verify within 5 minutes to access
                 your account.</strong
               >
             </button>
@@ -472,7 +444,7 @@
             <a href="#admissions">Admissions</a>
             <a href="#gallery">Gallery</a>
             <a href="#news">News</a>
-            <a href="#loginView">Portal</a>
+            <a href="#authView">Portal</a>
           </div>
           <div class="footer-contact">
             <strong>+91 94630 11687</strong>
@@ -508,103 +480,84 @@
         </div>
       </section>
 
-      <!-- UPDATED AUTHENTICATION GRID -->
-      <section id="loginView" class="auth-grid">
-        <div class="login-panel">
-          <h2>Portal Login</h2>
-          <form id="loginForm">
-            <label>
-              Role
-              <select id="roleHint">
-                <option value="">Select portal role</option>
-                <option value="student">Student</option>
-                <option value="parent">Parent</option>
-                <option value="teacher">Teacher</option>
-              </select>
-            </label>
-            <label>Email<input id="email" type="email" autocomplete="username" required /></label>
-            <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
-            <button type="submit">Login</button>
-          </form>
+      <!-- SINGLE UNIFIED AUTHENTICATION CARD -->
+      <section id="authView" class="auth-grid">
+        <div class="login-panel" id="authCard">
           
-          <div style="margin-top: 15px; text-align: center;">
-            <button type="button" class="ghost small" id="showForgotBtn">Forgot Password?</button>
+          <!-- STATE 1: LOGIN -->
+          <div id="loginState">
+            <h2>Portal Login</h2>
+            <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 15px;">Enter your credentials to continue.</p>
+            <form id="loginForm">
+              <label>Role
+                <select id="roleHint" required>
+                  <option value="">Select portal role</option>
+                  <option value="student">Student</option>
+                  <option value="parent">Parent</option>
+                  <option value="teacher">Teacher</option>
+                </select>
+              </label>
+              <label>Email<input id="email" type="email" autocomplete="username" required /></label>
+              <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
+              <div style="text-align: right; margin-top: -10px; margin-bottom: 15px;">
+                <button type="button" id="showForgotBtn" style="background:none; border:none; color:#059669; cursor:pointer; font-size:0.85rem; padding:0;">Forgot Password?</button>
+              </div>
+              <button type="submit">Login</button>
+            </form>
           </div>
-          <p id="loginMessage" class="message"></p>
-          
+
+          <!-- STATE 2: OTP -->
+          <div id="otpState" hidden>
+            <button type="button" class="ghost small" id="backToLoginFromOtp" style="margin-bottom: 10px;">← Back</button>
+            <h2>Enter OTP</h2>
+            <p class="muted" id="otpHelp">Code sent to your email.</p>
+            <form id="otpForm">
+              <label>6-Digit Code<input id="otpCode" inputmode="numeric" maxlength="6" required /></label>
+              <button type="submit">Verify & Login</button>
+            </form>
+          </div>
+
+          <!-- STATE 3: FORGOT PASSWORD -->
+          <div id="forgotState" hidden>
+            <button type="button" class="ghost small" id="backToLoginFromForgot" style="margin-bottom: 10px;">← Back</button>
+            <h2>Reset Password</h2>
+            
+            <form id="forgotRequestForm">
+              <p class="muted">Enter your email to receive a reset code.</p>
+              <label>Email Address<input id="forgotEmail" type="email" required /></label>
+              <button type="submit">Send Reset OTP</button>
+            </form>
+
+            <form id="forgotResetForm" hidden>
+              <p class="muted">Check your email for the code.</p>
+              <label>6-Digit Code<input id="forgotOtp" inputmode="numeric" maxlength="6" required /></label>
+              <label>New Password<input id="forgotNewPassword" type="password" required minlength="6" /></label>
+              <button type="submit">Update Password</button>
+            </form>
+          </div>
+
+          <!-- SHARED MESSAGES & ADMIN LINK -->
+          <p id="authMessage" class="message"></p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0" />
-          <p style="color: #6b7280; font-size: 0.9rem; margin: 12px 0; text-align:center;">Are you the school administrator?</p>
-          <a href="/admin" style="display: block; border: 2px solid #059669; background: #059669; color: white; padding: 0.7rem; border-radius: 12px; text-decoration: none; font-weight: 700; text-align: center;">Go to Admin Portal</a>
+          <a href="/admin" style="display: block; border: 2px solid #059669; color: #059669; padding: 0.7rem; border-radius: 12px; text-decoration: none; font-weight: 700; text-align: center; transition: all 0.2s;">Go to Admin Portal</a>
         </div>
 
-        <!-- RESTORED DEMO PANEL -->
         <div class="demo-panel">
           <h2>Secure Portal Services</h2>
           <div class="portal-service-list">
             <div>
               <strong>School-created accounts</strong>
-              <span
-                >Parents and students login only after the school office creates
-                credentials.</span
-              >
+              <span>Parents and students login only after the office creates credentials.</span>
             </div>
             <div>
               <strong>Email OTP security</strong>
-              <span
-                >Parent and student portal access is protected with a 5-minute
-                OTP.</span
-              >
+              <span>Portal access is strictly protected with a 5-minute email verification code.</span>
             </div>
             <div>
               <strong>UPI-only fees</strong>
-              <span
-                >Parent fee payment is routed through Razorpay UPI
-                checkout.</span
-              >
+              <span>Parent fee payment is routed securely through Razorpay.</span>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- NEW OTP SCREEN (Merged Flow) -->
-      <section id="otpView" class="otp-screen" hidden>
-        <div class="otp-card">
-          <button class="ghost small" id="backToLogin" type="button">Back to Login</button>
-          <p class="eyebrow">Secure verification</p>
-          <h2>Enter OTP</h2>
-          <p class="muted" id="otpHelp">An OTP has been sent to your email.</p>
-
-          <form id="otpForm">
-            <label>
-              Email OTP Code
-              <input id="otpCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
-            </label>
-            <button type="submit">Verify & Login</button>
-          </form>
-          <p id="otpMessage" class="message"></p>
-        </div>
-      </section>
-
-      <!-- NEW FORGOT PASSWORD SCREEN -->
-      <section id="forgotView" class="otp-screen" hidden>
-        <div class="otp-card">
-          <button class="ghost small" id="backToLoginFromForgot" type="button">Back to Login</button>
-          <p class="eyebrow">Account Recovery</p>
-          <h2>Reset Password</h2>
-          
-          <form id="forgotRequestForm">
-            <p class="muted">Enter your registered email to receive a reset code.</p>
-            <label>Email Address<input id="forgotEmail" type="email" required /></label>
-            <button type="submit">Send Reset OTP</button>
-          </form>
-
-          <form id="forgotResetForm" hidden>
-            <p class="muted">Check your email for the 6-digit code.</p>
-            <label>Reset OTP Code<input id="forgotOtp" inputmode="numeric" maxlength="6" required /></label>
-            <label>Create New Password<input id="forgotNewPassword" type="password" required minlength="6" /></label>
-            <button type="submit">Update Password</button>
-          </form>
-          <p id="forgotMessage" class="message"></p>
         </div>
       </section>
 
