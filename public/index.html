@@ -508,6 +508,7 @@
         </div>
       </section>
 
+      <!-- UPDATED AUTHENTICATION GRID -->
       <section id="loginView" class="auth-grid">
         <div class="login-panel">
           <h2>Portal Login</h2>
@@ -521,48 +522,22 @@
                 <option value="teacher">Teacher</option>
               </select>
             </label>
-            <label>
-              Email
-              <input id="email" type="email" autocomplete="username" required />
-            </label>
-            <label>
-              Password
-              <input
-                id="password"
-                type="password"
-                autocomplete="current-password"
-                required
-              />
-            </label>
+            <label>Email<input id="email" type="email" autocomplete="username" required /></label>
+            <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
             <button type="submit">Login</button>
           </form>
+          
+          <div style="margin-top: 15px; text-align: center;">
+            <button type="button" class="ghost small" id="showForgotBtn">Forgot Password?</button>
+          </div>
           <p id="loginMessage" class="message"></p>
-          <hr
-            style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0"
-          />
-          <p style="color: #6b7280; font-size: 0.9rem; margin: 12px 0">
-            Are you the school administrator?
-          </p>
-          <a
-            href="/admin"
-            style="
-              display: inline-block;
-              border: 2px solid #059669;
-              background: #059669;
-              color: white;
-              padding: 0.7rem 1.2rem;
-              border-radius: 12px;
-              text-decoration: none;
-              font-weight: 700;
-              transition: all 0.3s ease;
-              width: 100%;
-              text-align: center;
-              box-sizing: border-box;
-            "
-            >Go to Admin Portal</a
-          >
+          
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0" />
+          <p style="color: #6b7280; font-size: 0.9rem; margin: 12px 0; text-align:center;">Are you the school administrator?</p>
+          <a href="/admin" style="display: block; border: 2px solid #059669; background: #059669; color: white; padding: 0.7rem; border-radius: 12px; text-decoration: none; font-weight: 700; text-align: center;">Go to Admin Portal</a>
         </div>
 
+        <!-- RESTORED DEMO PANEL -->
         <div class="demo-panel">
           <h2>Secure Portal Services</h2>
           <div class="portal-service-list">
@@ -591,38 +566,45 @@
         </div>
       </section>
 
+      <!-- NEW OTP SCREEN (Merged Flow) -->
       <section id="otpView" class="otp-screen" hidden>
         <div class="otp-card">
           <button class="ghost small" id="backToLogin" type="button">Back to Login</button>
           <p class="eyebrow">Secure verification</p>
           <h2>Enter OTP</h2>
-          <p class="muted">
-            An Email OTP will be sent to your registered email address. OTP is valid for 5 minutes.
-          </p>
+          <p class="muted" id="otpHelp">An OTP has been sent to your email.</p>
 
-          <form id="otpChoiceForm">
-            <div class="sms-only-note">
-              <strong>Email OTP</strong>
-              <span id="otpChoiceHelp" class="muted">We will send a 6-digit code to your inbox.</span>
-            </div>
-            <button type="submit">Send OTP to Email</button>
-          </form>
-
-          <form id="otpForm" hidden>
-            <label id="smsOtpLabel">
+          <form id="otpForm">
+            <label>
               Email OTP Code
-              <input
-                id="otpCode"
-                inputmode="numeric"
-                maxlength="6"
-                autocomplete="one-time-code"
-                required
-              />
+              <input id="otpCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
             </label>
-            <p id="otpHelp" class="muted"></p>
-            <button type="submit">Verify OTP</button>
+            <button type="submit">Verify & Login</button>
           </form>
           <p id="otpMessage" class="message"></p>
+        </div>
+      </section>
+
+      <!-- NEW FORGOT PASSWORD SCREEN -->
+      <section id="forgotView" class="otp-screen" hidden>
+        <div class="otp-card">
+          <button class="ghost small" id="backToLoginFromForgot" type="button">Back to Login</button>
+          <p class="eyebrow">Account Recovery</p>
+          <h2>Reset Password</h2>
+          
+          <form id="forgotRequestForm">
+            <p class="muted">Enter your registered email to receive a reset code.</p>
+            <label>Email Address<input id="forgotEmail" type="email" required /></label>
+            <button type="submit">Send Reset OTP</button>
+          </form>
+
+          <form id="forgotResetForm" hidden>
+            <p class="muted">Check your email for the 6-digit code.</p>
+            <label>Reset OTP Code<input id="forgotOtp" inputmode="numeric" maxlength="6" required /></label>
+            <label>Create New Password<input id="forgotNewPassword" type="password" required minlength="6" /></label>
+            <button type="submit">Update Password</button>
+          </form>
+          <p id="forgotMessage" class="message"></p>
         </div>
       </section>
 

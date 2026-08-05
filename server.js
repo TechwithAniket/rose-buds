@@ -256,19 +256,32 @@ async function handleApi(req, res) {
         return sendJson(res, 401, { error: "Invalid email or password." });
       }
 
-      if (user.twoFactor) {
-        const challengeId = crypto.randomUUID();
-        pendingOtpDelivery.set(challengeId, {
-          userId: user.id,
-          expiresAt: Date.now() + 5 * 60 * 1000,
-        });
-        return sendJson(res, 200, {
-          requiresOtp: true,
-          challengeId,
-          phone: user.phone,
-          expiresInMinutes: 5,
-        });
-      }
+     if (user.twoFactor) {
+    const challengeId = crypto.randomUUID();
+    const smsOtp = String(crypto.randomInt(100000, 999999));
+
+    // 1. Send the email instantly upon valid password!
+    const emailSent = await dispatchOTP(user.email, smsOtp);
+    if (!emailSent) {
+      return sendJson(res, 500, { error: "Failed to send OTP email. Check logs." });
+    }
+
+    // 2. Lock it in RAM
+    pendingOtp.set(challengeId, {
+      userId: user.id,
+      method: "email",
+      smsOtp,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    // 3. Tell the frontend to show the OTP input
+    return sendJson(res, 200, {
+      requiresOtp: true,
+      challengeId,
+      email: user.email, // Send email back so the UI can say "Sent to..."
+      expiresInMinutes: 5,
+    });
+  }
 
       const token = crypto.randomUUID();
       
@@ -750,6 +763,46 @@ if (route === "POST /api/request-otp") {
 
       return sendJson(res, 201, payment);
     }
+
+    if (route === "POST /api/forgot-password") {
+  if (!checkRateLimit(req, "forgot_password", 3, 15)) {
+    return sendJson(res, 429, { error: "Too many requests. Please wait." });
+  }
+  const body = await readBody(req);
+  const user = await prisma.user.findUnique({ where: { email: String(body.email).toLowerCase() } });
+  if (!user) return sendJson(res, 404, { error: "Account with this email not found." });
+
+  const challengeId = crypto.randomUUID();
+  const resetOtp = String(crypto.randomInt(100000, 999999));
+  
+  const emailSent = await dispatchOTP(user.email, resetOtp);
+  if (!emailSent) return sendJson(res, 500, { error: "Failed to send reset email." });
+
+  pendingOtp.set(challengeId, { userId: user.id, resetOtp, expiresAt: Date.now() + 10 * 60 * 1000 });
+  return sendJson(res, 200, { challengeId });
+}
+
+if (route === "POST /api/reset-password") {
+  if (!checkRateLimit(req, "reset_password", 5, 15)) {
+    return sendJson(res, 429, { error: "Too many failed attempts." });
+  }
+  const body = await readBody(req);
+  const pending = pendingOtp.get(body.challengeId);
+  
+  if (!pending || pending.resetOtp !== body.otp || pending.expiresAt < Date.now()) {
+    return sendJson(res, 401, { error: "Invalid or expired OTP." });
+  }
+
+  // Hash the new password and save it
+  const passwordHash = await bcrypt.hash(body.newPassword, 10);
+  await prisma.user.update({
+    where: { id: pending.userId },
+    data: { passwordHash }
+  });
+  
+  pendingOtp.delete(body.challengeId);
+  return sendJson(res, 200, { message: "Password updated successfully." });
+}
 
     return sendJson(res, 404, { error: "API route not found." });
   } catch (error) {

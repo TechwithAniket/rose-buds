@@ -85,10 +85,14 @@ function showLogin() {
   $(".portal-intro").hidden = false;
   $("#loginView").hidden = false;
   $("#otpView").hidden = true;
+  $("#forgotView").hidden = true; // Added this line!
   $("#portalView").hidden = true;
   $("#logoutButton").hidden = true;
   $("#loginForm").hidden = false;
-  resetOtpFlow();
+  
+  // Reset standard messages
+  setMessage("");
+  setOtpMessage("");
 }
 
 function metric(label, value) {
@@ -537,9 +541,10 @@ function renderTeacher() {
     </div>`;
 }
 
+// --- FLUID LOGIN FLOW ---
 $("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  setMessage("");
+  setMessage("Authenticating...", false); 
   setOtpMessage("");
   const email = $("#email").value;
   const password = $("#password").value;
@@ -549,34 +554,19 @@ $("#loginForm").addEventListener("submit", async (event) => {
       method: "POST",
       body: { email, password },
     });
+    
     if (result.requiresOtp) {
       state.challengeId = result.challengeId;
       $("#loginView").hidden = true;
       $("#otpView").hidden = false;
-      // Note: Backend still sends phone, but we will wire up the email later
-      $("#otpChoiceHelp").textContent = `Identity verification required for security.`;
+      // UI feels instantaneous - no choice form needed anymore!
+      $("#otpHelp").textContent = `Code sent securely to ${result.email}. Valid for 5 minutes.`;
+      $("#otpCode").value = "";
       return;
     }
     await loadDashboard();
   } catch (error) {
-    setMessage(error.message);
-  }
-});
-
-$("#otpChoiceForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  setOtpMessage("");
-  try {
-    const result = await api("/api/request-otp", {
-      method: "POST",
-      body: { challengeId: state.challengeId },
-    });
-    $("#otpChoiceForm").hidden = true;
-    $("#otpForm").hidden = false;
-    $("#otpCode").value = "";
-    $("#otpHelp").textContent = `${result.delivery}. Valid for 5 minutes.`;
-  } catch (error) {
-    setOtpMessage(error.message);
+    setMessage(error.message, true);
   }
 });
 
@@ -585,22 +575,68 @@ $("#otpForm").addEventListener("submit", async (event) => {
   try {
     await api("/api/verify-otp", {
       method: "POST",
-      body: {
-        challengeId: state.challengeId,
-        smsOtp: $("#otpCode").value, // Backend still looks for the smsOtp key
-      },
+      body: { challengeId: state.challengeId, smsOtp: $("#otpCode").value },
     });
     $("#otpForm").hidden = true;
     $("#otpView").hidden = true;
     await loadDashboard();
   } catch (error) {
-    setOtpMessage(error.message);
+    setOtpMessage(error.message, true);
   }
 });
 
-$("#backToLogin").addEventListener("click", () => {
-  showLogin();
+// --- FORGOT PASSWORD FLOW ---
+$("#showForgotBtn").addEventListener("click", () => {
+  $("#loginView").hidden = true;
+  $("#forgotView").hidden = false;
+  $("#forgotRequestForm").hidden = false;
+  $("#forgotResetForm").hidden = true;
+  $("#forgotMessage").textContent = "";
+  $("#forgotEmail").value = $("#email").value; // Auto-fill if they typed it already
 });
+
+$("#forgotRequestForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = $("#forgotEmail").value;
+  const msgNode = $("#forgotMessage");
+  msgNode.style.color = "inherit";
+  msgNode.textContent = "Sending secure reset code...";
+  
+  try {
+    const res = await api("/api/forgot-password", { method: "POST", body: { email } });
+    state.challengeId = res.challengeId; 
+    $("#forgotRequestForm").hidden = true;
+    $("#forgotResetForm").hidden = false;
+    msgNode.textContent = "";
+  } catch (err) {
+    msgNode.style.color = "var(--danger)";
+    msgNode.textContent = err.message;
+  }
+});
+
+$("#forgotResetForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const otp = $("#forgotOtp").value;
+  const newPassword = $("#forgotNewPassword").value;
+  const msgNode = $("#forgotMessage");
+  
+  try {
+    await api("/api/reset-password", { 
+      method: "POST", 
+      body: { challengeId: state.challengeId, otp, newPassword } 
+    });
+    msgNode.style.color = "var(--success)";
+    msgNode.textContent = "Password updated! Redirecting to login...";
+    setTimeout(showLogin, 2000); // Send them back to login after 2 seconds
+  } catch (err) {
+    msgNode.style.color = "var(--danger)";
+    msgNode.textContent = err.message;
+  }
+});
+
+// Handle back buttons
+$("#backToLogin").addEventListener("click", showLogin);
+$("#backToLoginFromForgot").addEventListener("click", showLogin);
 
 $("#logoutButton").addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
