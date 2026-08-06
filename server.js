@@ -3,38 +3,39 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const bcrypt = require("bcryptjs");
+require("dotenv").config();
 
 console.log("SERVER IS CONNECTED TO:", process.env.DATABASE_URL);
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "public");
 
-// Temporary RAM storage for OTP delivery.
-const pendingOtpDelivery = new Map();
+// Temporary RAM storage for OTP verification
 const pendingOtp = new Map();
 
-// --- BOT PROTECTION ---
+// --- SECURE BOT PROTECTION ---
 const rateLimitMap = new Map();
 
-function checkRateLimit(req, limit = 5, windowMinutes = 15) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+// FIXED: Added 'action' parameter to track limits per-route, per-IP
+function checkRateLimit(req, action, limit = 5, windowMinutes = 15) {
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.socket.remoteAddress || "unknown";
+  const key = `${ip}_${action}`;
   const now = Date.now();
-  const windowStart = now - (windowMinutes * 60 * 1000);
+  const windowStart = now - windowMinutes * 60 * 1000;
 
-  let requests = rateLimitMap.get(ip) || [];
-  requests = requests.filter(timestamp => timestamp > windowStart);
+  let requests = rateLimitMap.get(key) || [];
+  requests = requests.filter((timestamp) => timestamp > windowStart);
 
   if (requests.length >= limit) {
-    rateLimitMap.set(ip, requests); 
-    return false; 
+    rateLimitMap.set(key, requests);
+    return false;
   }
 
   requests.push(now);
-  rateLimitMap.set(ip, requests);
+  rateLimitMap.set(key, requests);
   return true;
 }
 
@@ -56,7 +57,7 @@ const defaultDb = {
     accountNumber: "123456789012",
     ifsc: "SBIN0001234",
     supportPhone: "+91 94630 11687",
-  }
+  },
 };
 
 // ==========================================
@@ -156,7 +157,7 @@ async function getSession(req) {
   try {
     const session = await prisma.session.findUnique({
       where: { id: token },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!session || session.expiresAt < new Date()) {
@@ -232,138 +233,97 @@ function serveStatic(req, res) {
 async function handleApi(req, res) {
   const url = getRequestUrl(req);
   const route = `${req.method} ${url.pathname}`;
+  const isProd = process.env.NODE_ENV === "production";
 
   try {
     // --- AUTHENTICATION ROUTES --- //
-    
+
     if (route === "POST /api/login") {
-  if (!checkRateLimit(req, "login", 5, 15)) {
-    return sendJson(res, 429, { error: "Too many login attempts. Please wait." });
-  }
-
-  const body = await readBody(req);
-  const email = String(body.email).toLowerCase();
-  
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    return sendJson(res, 401, { error: "Invalid email or password" });
-  }
-
-  const valid = await bcrypt.compare(body.password, user.passwordHash);
-  if (!valid) {
-    return sendJson(res, 401, { error: "Invalid email or password" });
-  }
-
-  // --- THE NEW AUTO-OTP LOGIC ---
-  if (user.twoFactor) {
-    const challengeId = crypto.randomUUID();
-    const smsOtp = String(crypto.randomInt(100000, 999999));
-
-    const emailSent = await dispatchOTP(user.email, smsOtp);
-    if (!emailSent) {
-      return sendJson(res, 500, { error: "Failed to send OTP email. Check server logs." });
-    }
-
-    pendingOtp.set(challengeId, {
-      userId: user.id,
-      method: "email",
-      smsOtp,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-    });
-
-    // This exact response triggers the frontend card to flip to the OTP section
-    return sendJson(res, 200, {
-      requiresOtp: true,
-      challengeId,
-      email: user.email,
-      expiresInMinutes: 5,
-    });
-  }
-
-  // Admin Login (No 2FA)
-  const sessionToken = crypto.randomUUID();
-  sessions.set(sessionToken, { userId: user.id, role: user.role, expires: Date.now() + 8 * 3600000 });
-  
-  res.setHeader(
-    "Set-Cookie",
-    `session=${sessionToken}; HttpOnly; Path=/; Max-Age=28800; SameSite=Strict${process.env.NODE_ENV === "production" ? "; Secure" : ""}`
-  );
-  
-  return sendJson(res, 200, { success: true, requiresOtp: false });
-}
-
-if (route === "POST /api/request-otp") {
-      // 1. Separate bucket for OTP requests (limit 10 for testing)
-      if (!checkRateLimit(req, "request_otp", 10, 15)) {
-        return sendJson(res, 429, { error: "Too many OTP requests. Please wait." });
+      if (!checkRateLimit(req, "login", 5, 15)) {
+        return sendJson(res, 429, { error: "Too many login attempts. Please wait." });
       }
 
       const body = await readBody(req);
-      const pending = pendingOtpDelivery.get(body.challengeId);
+      const email = String(body.email).toLowerCase();
 
-      // 2. Check if the login challenge is valid and hasn't expired
-      if (!pending || pending.expiresAt < Date.now()) {
-        return sendJson(res, 401, { error: "OTP request expired. Please login again." });
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        return sendJson(res, 401, { error: "Invalid email or password" });
       }
 
-      // 3. Find the real user in the database
-      const user = await prisma.user.findUnique({ where: { id: pending.userId } });
-      
-      // 4. Generate the 6-digit mathematical code
-      const smsOtp = String(crypto.randomInt(100000, 999999));
-
-      // 5. TRY to send the real email and WAIT for Google's response
-      const emailSent = await dispatchOTP(user.email, smsOtp);
-      
-      // 6. If Google/Nodemailer crashed, stop and tell the frontend the truth
-      if (!emailSent) {
-        return sendJson(res, 500, { error: "Server failed to send email. Check Render logs." });
+      const valid = await bcrypt.compare(body.password, user.passwordHash);
+      if (!valid) {
+        return sendJson(res, 401, { error: "Invalid email or password" });
       }
 
-      // 7. If successful, lock the OTP into RAM for 5 minutes
-      pendingOtp.set(body.challengeId, {
-        userId: pending.userId,
-        method: "email",
-        smsOtp, // Keeping variable name as smsOtp so we don't break verification
-        expiresAt: Date.now() + 5 * 60 * 1000,
-      });
-      pendingOtpDelivery.delete(body.challengeId); // Clean up the delivery challenge
+      if (user.twoFactor) {
+        const challengeId = crypto.randomUUID();
+        const smsOtp = String(crypto.randomInt(100000, 999999));
 
-      // 8. Tell the frontend success
-      return sendJson(res, 200, {
-        method: "email",
-        delivery: `OTP has been emailed to ${user.email}`,
-        expiresInMinutes: 5,
+        const emailSent = await dispatchOTP(user.email, smsOtp);
+        if (!emailSent) {
+          return sendJson(res, 500, { error: "Failed to send OTP email. Check server logs." });
+        }
+
+        pendingOtp.set(challengeId, {
+          userId: user.id,
+          method: "email",
+          smsOtp,
+          expiresAt: Date.now() + 5 * 60 * 1000,
+        });
+
+        return sendJson(res, 200, {
+          requiresOtp: true,
+          challengeId,
+          email: user.email,
+          expiresInMinutes: 5,
+        });
+      }
+
+      // FIXED: Admin Login (No 2FA) writes to Prisma instead of undefined 'sessions' map
+      const token = crypto.randomUUID();
+      await prisma.session.create({
+        data: {
+          id: token,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000), // 8 hours
+        },
       });
+
+      res.setHeader(
+        "Set-Cookie",
+        `session=${token}; HttpOnly; Path=/; Max-Age=28800; SameSite=Lax${isProd ? "; Secure" : ""}`
+      );
+
+      return sendJson(res, 200, { success: true, requiresOtp: false });
     }
 
     if (route === "POST /api/verify-otp") {
-      if (!checkRateLimit(req, 20, 15)) {
+      if (!checkRateLimit(req, "verify_otp", 20, 15)) {
         return sendJson(res, 429, { error: "Too many failed attempts. Try again later." });
       }
 
       const body = await readBody(req);
       const challenge = pendingOtp.get(body.challengeId);
       const smsOtpMatches = challenge?.smsOtp === String(body.smsOtp || "");
-      
+
       if (!challenge || challenge.expiresAt < Date.now() || !smsOtpMatches) {
         return sendJson(res, 401, { error: "Invalid or expired OTP." });
       }
 
       const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
       pendingOtp.delete(body.challengeId);
-      
+
       const token = crypto.randomUUID();
-      
+
       await prisma.session.create({
         data: {
           id: token,
           userId: user.id,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        }
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
       });
-   
-      const isProd = process.env.NODE_ENV === "production";
+
       const cookieStr = `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800; ${isProd ? "Secure;" : ""}`;
 
       res.writeHead(200, {
@@ -398,27 +358,32 @@ if (route === "POST /api/request-otp") {
     }
 
     // --- PUBLIC & DEBUG ROUTES --- //
-    
+
     if (route === "GET /api/public") {
-      const news = await prisma.news.findMany({ orderBy: { date: 'desc' } });
+      const news = await prisma.news.findMany({ orderBy: { date: "desc" } });
       return sendJson(res, 200, { school: defaultDb.school, news });
     }
 
     if (route === "GET /api/test-db") {
+      if (isProd) return sendJson(res, 403, { error: "Debug endpoints disabled in production." });
+      
       try {
         const allStudents = await prisma.student.findMany();
         const allUsers = await prisma.user.findMany();
-        return sendJson(res, 200, { 
-          totalStudents: allStudents.length, 
+        return sendJson(res, 200, {
+          totalStudents: allStudents.length,
           totalUsers: allUsers.length,
-          students: allStudents 
+          students: allStudents,
         });
       } catch (error) {
         return sendJson(res, 500, { error: error.message });
       }
     }
 
+    // FIXED: Backdoor locked against production deployment
     if (route === "GET /api/rescue") {
+      if (isProd) return sendJson(res, 403, { error: "Rescue endpoint strictly disabled in production environments." });
+
       try {
         await prisma.user.deleteMany({ where: { email: "admin@test.com" } });
         const secureHash = await bcrypt.hash("admin123", 10);
@@ -426,10 +391,10 @@ if (route === "POST /api/request-otp") {
           data: {
             name: "Super Admin",
             email: "admin@test.com",
-            passwordHash: secureHash, 
+            passwordHash: secureHash,
             role: "admin",
-            phone: "1234567890"
-          }
+            phone: "1234567890",
+          },
         });
         return sendJson(res, 200, { message: "Admin revived with SECURE bcrypt password!" });
       } catch (error) {
@@ -438,7 +403,7 @@ if (route === "POST /api/request-otp") {
     }
 
     // --- PROTECTED ROUTES --- //
-    
+
     if (route === "GET /api/dashboard") {
       const user = await requireUser(req, res);
       if (!user) return;
@@ -464,16 +429,16 @@ if (route === "POST /api/request-otp") {
           students,
           payments,
           news,
-          messages: [], 
+          messages: [],
         });
       }
 
       if (user.role === "parent") {
         const childIds = user.children || [];
         const payments = await prisma.payment.findMany({
-          where: { studentId: { in: childIds } }
+          where: { studentId: { in: childIds } },
         });
-        
+
         return sendJson(res, 200, {
           user: publicUser(user),
           school: schoolData,
@@ -484,9 +449,9 @@ if (route === "POST /api/request-otp") {
 
       if (user.role === "student") {
         const payments = await prisma.payment.findMany({
-          where: { studentId: user.studentId }
+          where: { studentId: user.studentId },
         });
-        
+
         return sendJson(res, 200, {
           user: publicUser(user),
           school: schoolData,
@@ -497,10 +462,10 @@ if (route === "POST /api/request-otp") {
 
       if (user.role === "teacher") {
         const teacherStudents = students.filter((s) => s.className === user.className);
-        const teacherStudentIds = teacherStudents.map(s => s.studentId);
-        
+        const teacherStudentIds = teacherStudents.map((s) => s.studentId);
+
         const payments = await prisma.payment.findMany({
-          where: { studentId: { in: teacherStudentIds } }
+          where: { studentId: { in: teacherStudentIds } },
         });
 
         return sendJson(res, 200, {
@@ -545,7 +510,7 @@ if (route === "POST /api/request-otp") {
           passwordHash: studentHash,
           twoFactor: true,
           studentId: studentId,
-        }
+        },
       });
 
       const parentUser = await prisma.user.create({
@@ -557,7 +522,7 @@ if (route === "POST /api/request-otp") {
           passwordHash: parentHash,
           twoFactor: true,
           children: [studentId],
-        }
+        },
       });
 
       const student = await prisma.student.create({
@@ -570,7 +535,7 @@ if (route === "POST /api/request-otp") {
           totalFees: Number(body.totalFees || 0),
           paidAmount: Number(body.paidAmount || 0),
           dueDate: body.dueDate || "",
-        }
+        },
       });
 
       return sendJson(res, 201, {
@@ -596,7 +561,7 @@ if (route === "POST /api/request-otp") {
           summary: body.summary || "",
           image: body.image || "",
           date: body.date || new Date().toISOString().slice(0, 10),
-        }
+        },
       });
       return sendJson(res, 201, { item });
     }
@@ -605,7 +570,7 @@ if (route === "POST /api/request-otp") {
       const user = await requireUser(req, res, ["parent"]);
       if (!user) return;
       const body = await readBody(req);
-      
+
       if (!user.children.includes(body.studentId)) {
         return sendJson(res, 403, { error: "You can only pay fees for your own child." });
       }
@@ -634,7 +599,7 @@ if (route === "POST /api/request-otp") {
       const user = await requireUser(req, res, ["admin"]);
       if (!user) return;
       const body = await readBody(req);
-      
+
       const updatedStudent = await prisma.student.update({
         where: { studentId: body.studentId },
         data: {
@@ -643,27 +608,23 @@ if (route === "POST /api/request-otp") {
           dueDate: body.dueDate,
           totalFees: body.totalFees !== undefined ? Number(body.totalFees) : undefined,
           paidAmount: body.paidAmount !== undefined ? Number(body.paidAmount) : undefined,
-        }
+        },
       });
-      
+
       return sendJson(res, 200, { student: updatedStudent });
     }
 
     if (route === "DELETE /api/students") {
-      const user = await requireUser(req, res, ["admin"]); 
+      const user = await requireUser(req, res, ["admin"]);
       if (!user) return;
 
       try {
-        const buffers = [];
-        for await (const chunk of req) {
-          buffers.push(chunk);
-        }
-        const rawData = Buffer.concat(buffers).toString();
-        const body = JSON.parse(rawData || "{}");
+        // FIXED: Using existing robust readBody instead of raw manual buffer parsing
+        const body = await readBody(req);
         const { studentId } = body;
 
         const student = await prisma.student.findUnique({
-          where: { studentId: String(studentId) }
+          where: { studentId: String(studentId) },
         });
 
         if (!student) {
@@ -671,11 +632,11 @@ if (route === "POST /api/request-otp") {
         }
 
         await prisma.payment.deleteMany({
-          where: { studentId: String(studentId) }
+          where: { studentId: String(studentId) },
         });
 
         await prisma.student.delete({
-          where: { studentId: String(studentId) }
+          where: { studentId: String(studentId) },
         });
 
         const usersToDelete = [];
@@ -685,13 +646,12 @@ if (route === "POST /api/request-otp") {
         if (usersToDelete.length > 0) {
           await prisma.user.deleteMany({
             where: {
-              id: { in: usersToDelete }
-            }
+              id: { in: usersToDelete },
+            },
           });
         }
-        
-        return sendJson(res, 200, { message: "Student completely wiped." });
 
+        return sendJson(res, 200, { message: "Student completely wiped." });
       } catch (error) {
         console.error("--- CRASH IN DELETE ROUTE ---", error);
         return sendJson(res, 500, { error: "Server crashed during delete." });
@@ -703,7 +663,7 @@ if (route === "POST /api/request-otp") {
       const user = await requireUser(req, res, ["parent"]);
       if (!user) return;
       const body = await readBody(req);
-      
+
       if (!user.children.includes(body.studentId)) {
         return sendJson(res, 403, { error: "You can only pay fees for your own child." });
       }
@@ -724,7 +684,7 @@ if (route === "POST /api/request-otp") {
         console.error(`🚨 ALERT: Invalid Razorpay Signature from User ${user.email}.`);
         return sendJson(res, 400, { error: "Payment verification failed. Invalid signature." });
       }
-      
+
       const numAmount = Number(amount || 0);
       if (numAmount <= 0) return sendJson(res, 400, { error: "Payment amount must be greater than zero." });
 
@@ -737,15 +697,15 @@ if (route === "POST /api/request-otp") {
             reference: razorpay_payment_id,
             paidByUserId: user.id,
             status: "success",
-            messageSent: false
-          }
+            messageSent: false,
+          },
         });
 
         const updatedStudent = await tx.student.update({
           where: { studentId: studentId },
           data: {
-            paidAmount: { increment: numAmount }
-          }
+            paidAmount: { increment: numAmount },
+          },
         });
 
         return { payment: newPayment, student: updatedStudent };
@@ -755,44 +715,44 @@ if (route === "POST /api/request-otp") {
     }
 
     if (route === "POST /api/forgot-password") {
-  if (!checkRateLimit(req, "forgot_password", 3, 15)) {
-    return sendJson(res, 429, { error: "Too many requests. Please wait." });
-  }
-  const body = await readBody(req);
-  const user = await prisma.user.findUnique({ where: { email: String(body.email).toLowerCase() } });
-  if (!user) return sendJson(res, 404, { error: "Account with this email not found." });
+      if (!checkRateLimit(req, "forgot_password", 3, 15)) {
+        return sendJson(res, 429, { error: "Too many requests. Please wait." });
+      }
+      const body = await readBody(req);
+      const user = await prisma.user.findUnique({ where: { email: String(body.email).toLowerCase() } });
+      if (!user) return sendJson(res, 404, { error: "Account with this email not found." });
 
-  const challengeId = crypto.randomUUID();
-  const resetOtp = String(crypto.randomInt(100000, 999999));
-  
-  const emailSent = await dispatchOTP(user.email, resetOtp);
-  if (!emailSent) return sendJson(res, 500, { error: "Failed to send reset email." });
+      const challengeId = crypto.randomUUID();
+      const resetOtp = String(crypto.randomInt(100000, 999999));
 
-  pendingOtp.set(challengeId, { userId: user.id, resetOtp, expiresAt: Date.now() + 10 * 60 * 1000 });
-  return sendJson(res, 200, { challengeId });
-}
+      const emailSent = await dispatchOTP(user.email, resetOtp);
+      if (!emailSent) return sendJson(res, 500, { error: "Failed to send reset email." });
 
-if (route === "POST /api/reset-password") {
-  if (!checkRateLimit(req, "reset_password", 5, 15)) {
-    return sendJson(res, 429, { error: "Too many failed attempts." });
-  }
-  const body = await readBody(req);
-  const pending = pendingOtp.get(body.challengeId);
-  
-  if (!pending || pending.resetOtp !== body.otp || pending.expiresAt < Date.now()) {
-    return sendJson(res, 401, { error: "Invalid or expired OTP." });
-  }
+      pendingOtp.set(challengeId, { userId: user.id, resetOtp, expiresAt: Date.now() + 10 * 60 * 1000 });
+      return sendJson(res, 200, { challengeId });
+    }
 
-  // Hash the new password and save it
-  const passwordHash = await bcrypt.hash(body.newPassword, 10);
-  await prisma.user.update({
-    where: { id: pending.userId },
-    data: { passwordHash }
-  });
-  
-  pendingOtp.delete(body.challengeId);
-  return sendJson(res, 200, { message: "Password updated successfully." });
-}
+    if (route === "POST /api/reset-password") {
+      if (!checkRateLimit(req, "reset_password", 5, 15)) {
+        return sendJson(res, 429, { error: "Too many failed attempts." });
+      }
+      const body = await readBody(req);
+      const pending = pendingOtp.get(body.challengeId);
+
+      if (!pending || pending.resetOtp !== body.otp || pending.expiresAt < Date.now()) {
+        return sendJson(res, 401, { error: "Invalid or expired OTP." });
+      }
+
+      // Hash the new password and save it
+      const passwordHash = await bcrypt.hash(body.newPassword, 10);
+      await prisma.user.update({
+        where: { id: pending.userId },
+        data: { passwordHash },
+      });
+
+      pendingOtp.delete(body.challengeId);
+      return sendJson(res, 200, { message: "Password updated successfully." });
+    }
 
     return sendJson(res, 404, { error: "API route not found." });
   } catch (error) {

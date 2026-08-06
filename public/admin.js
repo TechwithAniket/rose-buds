@@ -6,16 +6,30 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 
+// SECURITY: Sanitize data before DOM injection
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function setAdminMessage(text, isError = true) {
   const node = $("#adminLoginMessage");
-  node.textContent = text || "";
-  node.style.color = isError ? "#dc2626" : "#10b981";
+  if (node) {
+    node.textContent = text || "";
+    node.style.color = isError ? "#dc2626" : "#10b981";
+  }
 }
 
 function setAdminOtpMessage(text, isError = true) {
   const node = $("#adminOtpMessage");
-  node.textContent = text || "";
-  node.style.color = isError ? "#dc2626" : "#10b981";
+  if (node) {
+    node.textContent = text || "";
+    node.style.color = isError ? "#dc2626" : "#10b981";
+  }
 }
 
 function resetAdminOtpFlow() {
@@ -80,7 +94,7 @@ async function handleAdminLogin(e) {
 
     if (response.requiresOtp) {
       state.challengeId = response.challengeId;
-      $("#adminOtpChoiceHelp").textContent = `Registered mobile: ${response.phone}`;
+      $("#adminOtpChoiceHelp").textContent = `Registered email: ${response.email}`;
       showAdminOtp();
     } else {
       state.user = response.user;
@@ -137,8 +151,8 @@ async function loadAdminDashboard() {
   renderAdminPortal();
 }
 
-// --- GLOBAL CRUD FUNCTIONS ---
-window.deleteStudent = async (studentId) => {
+// --- SECURE CRUD FUNCTIONS (Removed from Global Window Object) ---
+async function deleteStudent(studentId) {
   if (!confirm(`Are you sure you want to completely delete ${studentId}?\nThis will destroy their user accounts and payment history.`)) return;
   
   try {
@@ -147,16 +161,15 @@ window.deleteStudent = async (studentId) => {
   } catch (error) {
     alert("Failed to delete student: " + error.message);
   }
-};
+}
 
-window.openEditModal = (studentId) => {
+function openEditModal(studentId) {
   const student = state.dashboard.students.find(s => s.studentId === studentId);
   if (!student) {
     alert("Error: Student not found in memory.");
     return;
   }
 
-  // Pre-fill the form with current database data
   $("#editStdId").value = student.studentId;
   $("#editStdName").value = student.name;
   $("#editStdClass").value = student.className;
@@ -165,14 +178,14 @@ window.openEditModal = (studentId) => {
   $("#editDueDate").value = student.dueDate || "";
 
   $("#editStudentModal").style.display = "grid";
-};
+}
 // ------------------------------
 
 function renderAdminPortal() {
-  const { user, students = [], payments = [], school } = state.dashboard;
+  const { user, students = [], payments = [] } = state.dashboard;
 
-  $("#adminRoleLabel").textContent = `${user.role} portal`;
-  $("#adminWelcomeTitle").textContent = `Welcome, ${user.name}`;
+  $("#adminRoleLabel").textContent = `${escapeHtml(user.role)} portal`;
+  $("#adminWelcomeTitle").textContent = `Welcome, ${escapeHtml(user.name)}`;
 
   const totalFees = students.reduce((sum, student) => sum + Number(student.totalFees), 0);
   const paid = students.reduce((sum, student) => sum + Number(student.paidAmount), 0);
@@ -208,10 +221,12 @@ function renderAdminPortal() {
   const tableHeaderHtml = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin: 32px 0 16px 0;">
       <h3 style="margin: 0; font-size: 1.3rem; color: #0f1419;">Student Directory</h3>
-      <button onclick="document.getElementById('addStudentModal').style.display='grid'" style="background: #059669; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 700;">+ Add Student</button>
+      <button id="triggerAddStudentBtn" style="background: #059669; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 700;">+ Add Student</button>
     </div>
   `;
 
+  // XSS PATCHED: Using escapeHtml on all dynamic row data
+  // EVENT DELEGATION: Using data-action and data-id instead of inline onclick
   const studentsTableHtml = `
     <div style="border: 1px solid #e5e7eb; border-radius: 12px; background: white; overflow-x: auto; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
       <table style="width: 100%; border-collapse: collapse;">
@@ -227,21 +242,21 @@ function renderAdminPortal() {
             <th style="padding: 16px; text-align: left; font-weight: 700; color: #0f1419;">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="studentsTableBody">
           ${students.map((student) => `
             <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 14px 16px; color: #0f1419;">${student.studentId}</td>
-              <td style="padding: 14px 16px; color: #0f1419;">${student.name}</td>
-              <td style="padding: 14px 16px; color: #0f1419;">${student.className}</td>
+              <td style="padding: 14px 16px; color: #0f1419;">${escapeHtml(student.studentId)}</td>
+              <td style="padding: 14px 16px; color: #0f1419;">${escapeHtml(student.name)}</td>
+              <td style="padding: 14px 16px; color: #0f1419;">${escapeHtml(student.className)}</td>
               <td style="padding: 14px 16px; color: #0f1419;">${currency.format(student.totalFees)}</td>
               <td style="padding: 14px 16px; color: #10b981; font-weight: 700;">${currency.format(student.paidAmount)}</td>
               <td style="padding: 14px 16px; color: #dc2626; font-weight: 700;">${currency.format(student.dueAmount)}</td>
               <td style="padding: 14px 16px;">
-                <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; ${student.status === "paid" ? "background: #d1fae5; color: #047857;" : "background: #fee2e2; color: #991b1b;"}">${student.status}</span>
+                <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; ${student.status === "paid" ? "background: #d1fae5; color: #047857;" : "background: #fee2e2; color: #991b1b;"}">${escapeHtml(student.status)}</span>
               </td>
               <td style="padding: 14px 16px; white-space: nowrap;">
-                <button onclick="window.openEditModal('${student.studentId}')" style="background: #f59e0b; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; margin-right: 8px;">Edit</button>
-                <button onclick="window.deleteStudent('${student.studentId}')" style="background: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700;">Delete</button>
+                <button data-action="edit" data-id="${escapeHtml(student.studentId)}" style="background: #f59e0b; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; margin-right: 8px;">Edit</button>
+                <button data-action="delete" data-id="${escapeHtml(student.studentId)}" style="background: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700;">Delete</button>
               </td>
             </tr>
           `).join("")}
@@ -251,6 +266,23 @@ function renderAdminPortal() {
   `;
 
   $("#adminMainContent").innerHTML = summaryHtml + tableHeaderHtml + studentsTableHtml;
+
+  // Bind Add Student Button
+  $("#triggerAddStudentBtn").addEventListener("click", () => {
+    $("#addStudentModal").style.display = "grid";
+  });
+
+  // Event Delegation for Edit/Delete Buttons
+  $("#studentsTableBody").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+
+    if (action === "edit") openEditModal(id);
+    if (action === "delete") deleteStudent(id);
+  });
 }
 
 async function handleAdminLogout() {
@@ -267,19 +299,19 @@ async function handleAdminLogout() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  $("#adminLoginForm").addEventListener("submit", handleAdminLogin);
-  $("#adminOtpChoiceForm").addEventListener("submit", handleAdminOtpRequest);
-  $("#adminOtpForm").addEventListener("submit", handleAdminOtpVerify);
-  $("#adminBackToLogin").addEventListener("click", () => showAdminLogin());
-  $("#adminLogoutButton").addEventListener("click", handleAdminLogout);
+document.addEventListener("DOMContentLoaded", async () => {
+  $("#adminLoginForm")?.addEventListener("submit", handleAdminLogin);
+  $("#adminOtpChoiceForm")?.addEventListener("submit", handleAdminOtpRequest);
+  $("#adminOtpForm")?.addEventListener("submit", handleAdminOtpVerify);
+  $("#adminBackToLogin")?.addEventListener("click", () => showAdminLogin());
+  $("#adminLogoutButton")?.addEventListener("click", handleAdminLogout);
 
   // ADD STUDENT LOGIC
-  $("#closeModalBtn").addEventListener("click", () => {
+  $("#closeModalBtn")?.addEventListener("click", () => {
     $("#addStudentModal").style.display = "none";
   });
 
-  $("#addStudentForm").addEventListener("submit", async (e) => {
+  $("#addStudentForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     
     const body = {
@@ -309,11 +341,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // EDIT STUDENT LOGIC
-  $("#closeEditModalBtn").addEventListener("click", () => {
+  $("#closeEditModalBtn")?.addEventListener("click", () => {
     $("#editStudentModal").style.display = "none";
   });
 
-  $("#editStudentForm").addEventListener("submit", async (e) => {
+  $("#editStudentForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     
     const body = {
@@ -334,5 +366,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  showAdminLogin();
+  // AUTO-LOGIN: Check for existing session before showing login screen
+  try {
+    const { user } = await api("/api/me");
+    if (user && user.role === "admin") {
+      state.user = user;
+      await loadAdminDashboard();
+      showAdminPortal();
+    } else {
+      showAdminLogin();
+    }
+  } catch {
+    showAdminLogin();
+  }
 });

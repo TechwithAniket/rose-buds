@@ -14,6 +14,21 @@ const currency = new Intl.NumberFormat("en-IN", {
 
 const $ = (selector) => document.querySelector(selector);
 
+// Centralized DOM safety wrappers to prevent "Cannot read properties of null" errors
+function toggleDisplay(selector, isHidden) {
+  const el = $(selector);
+  if (el) el.hidden = isHidden;
+}
+
+function showMessage(selector, text, type = "default") {
+  const node = $(selector);
+  if (node) {
+    node.textContent = text || "";
+    node.style.color = type === "error" ? "var(--danger)" : type === "success" ? "var(--success)" : "inherit";
+  }
+}
+
+// Crucial: Security function to prevent XSS in template literals
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -34,26 +49,14 @@ async function api(path, options = {}) {
   return payload;
 }
 
-function setMessage(text, isError = true) {
-  const node = $("#loginMessage");
-  if(node) {
-    node.textContent = text || "";
-    node.style.color = isError ? "var(--danger)" : "var(--success)";
-  }
-}
-
-function setOtpMessage(text, isError = true) {
-  const node = $("#otpMessage");
-  if(node) {
-    node.textContent = text || "";
-    node.style.color = isError ? "var(--danger)" : "var(--success)";
-  }
-}
-
 function applySchool(school) {
-  $("#schoolName").textContent = school?.name || "RBPS School";
-  $("#schoolTagline").textContent = school?.tagline || "";
-  $("#noticeText").textContent = school?.notice || "";
+  const nameNode = $("#schoolName");
+  const taglineNode = $("#schoolTagline");
+  const noticeNode = $("#noticeText");
+  
+  if (nameNode) nameNode.textContent = school?.name || "RBPS School";
+  if (taglineNode) taglineNode.textContent = school?.tagline || "";
+  if (noticeNode) noticeNode.textContent = school?.notice || "";
 }
 
 async function loadDashboard() {
@@ -64,73 +67,83 @@ async function loadDashboard() {
 }
 
 function showPortal() {
-  $("#publicWebsite").hidden = true;
-  $(".portal-intro").hidden = true;
-  $("#authView").hidden = true;
-  $("#portalView").hidden = false;
-  $("#logoutButton").hidden = false;
+  toggleDisplay("#publicWebsite", true);
+  toggleDisplay(".portal-intro", true);
+  toggleDisplay("#authView", true);
+  toggleDisplay("#portalView", false);
+  toggleDisplay("#logoutButton", false);
 }
 
-// --- SINGLE CARD STATE MANAGER ---
-function showAuthCard(state) {
-  $("#loginState").hidden = true;
-  $("#otpState").hidden = true;
-  $("#forgotState").hidden = true;
-  $("#forgotRequestForm").hidden = true;
-  $("#forgotResetForm").hidden = true;
-  $("#authMessage").textContent = "";
+function showAuthCard(cardState) {
+  toggleDisplay("#loginState", true);
+  toggleDisplay("#otpState", true);
+  toggleDisplay("#forgotState", true);
+  toggleDisplay("#forgotRequestForm", true);
+  toggleDisplay("#forgotResetForm", true);
+  showMessage("#authMessage", "");
 
-  if (state === "login") $("#loginState").hidden = false;
-  if (state === "otp") $("#otpState").hidden = false;
-  if (state === "forgot_req") {
-    $("#forgotState").hidden = false;
-    $("#forgotRequestForm").hidden = false;
-    $("#forgotEmail").value = $("#email").value; 
+  if (cardState === "login") toggleDisplay("#loginState", false);
+  if (cardState === "otp") toggleDisplay("#otpState", false);
+  
+  if (cardState === "forgot_req") {
+    toggleDisplay("#forgotState", false);
+    toggleDisplay("#forgotRequestForm", false);
+    const emailInput = $("#email");
+    const forgotEmailInput = $("#forgotEmail");
+    if (emailInput && forgotEmailInput) {
+      forgotEmailInput.value = emailInput.value;
+    }
   }
-  if (state === "forgot_reset") {
-    $("#forgotState").hidden = false;
-    $("#forgotResetForm").hidden = false;
+  
+  if (cardState === "forgot_reset") {
+    toggleDisplay("#forgotState", false);
+    toggleDisplay("#forgotResetForm", false);
   }
 }
 
 function showLogin() {
-  $("#publicWebsite").hidden = false;
-  $(".portal-intro").hidden = false;
-  $("#authView").hidden = false; 
-  $("#portalView").hidden = true;
-  $("#logoutButton").hidden = true;
-  showAuthCard("login"); 
+  toggleDisplay("#publicWebsite", false);
+  toggleDisplay(".portal-intro", false);
+  toggleDisplay("#authView", false);
+  toggleDisplay("#portalView", true);
+  toggleDisplay("#logoutButton", true);
+  showAuthCard("login");
 }
 
 function metric(label, value) {
-  return `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`;
+  return `<div class="metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
 }
 
 function renderSummary(students, payments) {
   const totalFees = students.reduce((sum, student) => sum + Number(student.totalFees), 0);
   const paid = students.reduce((sum, student) => sum + Number(student.paidAmount), 0);
   const due = Math.max(totalFees - paid, 0);
-  $("#summary").innerHTML = [
-    metric("Students", students.length),
-    metric("Paid fees", currency.format(paid)),
-    metric("Due fees", currency.format(due)),
-    metric("Payments", payments.length),
-  ].join("");
+  
+  const summaryNode = $("#summary");
+  if (summaryNode) {
+    summaryNode.innerHTML = [
+      metric("Students", students.length),
+      metric("Paid fees", currency.format(paid)),
+      metric("Due fees", currency.format(due)),
+      metric("Payments", payments.length),
+    ].join("");
+  }
 }
 
+// XSS Patched: All dynamic variables passed through escapeHtml()
 function renderStudentsTable(students, showActions = false) {
   const rows = students
     .map(
       (student) => `
       <tr>
-        <td>${student.studentId}</td>
-        <td>${student.name}</td>
-        <td>${student.className}</td>
+        <td>${escapeHtml(student.studentId)}</td>
+        <td>${escapeHtml(student.name)}</td>
+        <td>${escapeHtml(student.className)}</td>
         <td>${currency.format(student.totalFees)}</td>
         <td>${currency.format(student.paidAmount)}</td>
         <td>${currency.format(student.dueAmount)}</td>
-        <td><span class="status-pill ${student.status}">${student.status}</span></td>
-        ${showActions ? `<td><button class="small danger-action" data-delete-student="${student.studentId}">Delete</button></td>` : ""}
+        <td><span class="status-pill ${escapeHtml(student.status)}">${escapeHtml(student.status)}</span></td>
+        ${showActions ? `<td><button class="small danger-action" data-delete-student="${escapeHtml(student.studentId)}">Delete</button></td>` : ""}
       </tr>`,
     )
     .join("");
@@ -155,6 +168,7 @@ function renderStudentsTable(students, showActions = false) {
     </div>`;
 }
 
+// XSS Patched: Data injected safely
 function renderPayments(payments) {
   if (!payments.length) return `<p class="muted">No payment records yet.</p>`;
   return `
@@ -164,8 +178,8 @@ function renderPayments(payments) {
           (payment) => `
           <div class="receipt">
             <strong>${currency.format(payment.amount)}</strong>
-            <p>${payment.mode} payment for ${payment.studentId}</p>
-            <p class="muted">Ref: ${payment.reference} | ${new Date(payment.paidAt).toLocaleString()}</p>
+            <p>${escapeHtml(payment.mode)} payment for ${escapeHtml(payment.studentId)}</p>
+            <p class="muted">Ref: ${escapeHtml(payment.reference)} | ${new Date(payment.paidAt).toLocaleString()}</p>
           </div>`,
         )
         .join("")}
@@ -175,28 +189,32 @@ function renderPayments(payments) {
 function renderNewsItems(news = []) {
   const grid = $("#newsGrid");
   if (!grid) return;
-  grid.innerHTML =
-    news
-      .map(
-        (item) => `
-        <article class="news-card">
-          <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" />
-          <div>
-            <span>${escapeHtml(item.category)}</span>
-            <time>${new Date(item.date).toLocaleDateString()}</time>
-            <h3>${escapeHtml(item.title)}</h3>
-            <p>${escapeHtml(item.summary)}</p>
-          </div>
-        </article>`,
-      )
-      .join("") || `<p class="muted">School news will appear here soon.</p>`;
+  grid.innerHTML = news
+    .map(
+      (item) => `
+      <article class="news-card">
+        <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" />
+        <div>
+          <span>${escapeHtml(item.category)}</span>
+          <time>${new Date(item.date).toLocaleDateString()}</time>
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(item.summary)}</p>
+        </div>
+      </article>`,
+    )
+    .join("") || `<p class="muted">School news will appear here soon.</p>`;
 }
 
 function renderPortal() {
   const { user, students = [], payments = [], school } = state.dashboard;
   showPortal();
-  $("#roleLabel").textContent = `${user.role} portal`;
-  $("#welcomeTitle").textContent = `Welcome, ${user.name}`;
+  
+  const roleNode = $("#roleLabel");
+  const welcomeNode = $("#welcomeTitle");
+  
+  if (roleNode) roleNode.textContent = `${user.role} portal`;
+  if (welcomeNode) welcomeNode.textContent = `Welcome, ${user.name}`;
+  
   renderSummary(students, payments);
 
   if (user.role === "admin") return renderAdmin();
@@ -205,6 +223,7 @@ function renderPortal() {
   return renderStudent();
 }
 
+// XSS Patched: Safe class maps and school template rendering
 function renderAdmin() {
   const { students, payments, messages, school, news = [] } = state.dashboard;
   const classes = [...new Set(students.map((student) => student.className))].sort();
@@ -222,7 +241,7 @@ function renderAdmin() {
         <label>Class
           <select id="filterClass">
             <option value="all">All classes</option>
-            ${classes.map((className) => `<option value="${className}">${className}</option>`).join("")}
+            ${classes.map((className) => `<option value="${escapeHtml(className)}">${escapeHtml(className)}</option>`).join("")}
           </select>
         </label>
         <label>Search
@@ -233,6 +252,7 @@ function renderAdmin() {
         </label>
       </div>
       <div id="adminTable">${renderStudentsTable(students, true)}</div>
+      
       <div class="split">
         <div class="admin-panel">
           <h3>Create Student and Parent Accounts</h3>
@@ -251,21 +271,23 @@ function renderAdmin() {
           </form>
           <p id="adminCreateMessage" class="message"></p>
         </div>
+        
         <div class="admin-panel">
           <h3>Edit School Payment Details</h3>
           <form id="schoolForm" class="admin-form">
-            <label class="wide">School Name<input name="name" value="${school.name}" /></label>
-            <label class="wide">Notice<textarea name="notice" rows="3">${school.notice}</textarea></label>
-            <label>UPI ID<input name="upiId" value="${school.upiId}" /></label>
-            <label>Bank Name<input name="bankName" value="${school.bankName}" /></label>
-            <label>Account Name<input name="accountName" value="${school.accountName}" /></label>
-            <label>Account Number<input name="accountNumber" value="${school.accountNumber}" /></label>
-            <label>IFSC<input name="ifsc" value="${school.ifsc}" /></label>
-            <label>Support Phone<input name="supportPhone" value="${school.supportPhone}" /></label>
+            <label class="wide">School Name<input name="name" value="${escapeHtml(school.name)}" /></label>
+            <label class="wide">Notice<textarea name="notice" rows="3">${escapeHtml(school.notice)}</textarea></label>
+            <label>UPI ID<input name="upiId" value="${escapeHtml(school.upiId)}" /></label>
+            <label>Bank Name<input name="bankName" value="${escapeHtml(school.bankName)}" /></label>
+            <label>Account Name<input name="accountName" value="${escapeHtml(school.accountName)}" /></label>
+            <label>Account Number<input name="accountNumber" value="${escapeHtml(school.accountNumber)}" /></label>
+            <label>IFSC<input name="ifsc" value="${escapeHtml(school.ifsc)}" /></label>
+            <label>Support Phone<input name="supportPhone" value="${escapeHtml(school.supportPhone)}" /></label>
             <button class="wide" type="submit">Save School Details</button>
           </form>
         </div>
       </div>
+      
       <div class="admin-panel">
         <h3>Publish Gallery & News Update</h3>
         <form id="newsForm" class="admin-form">
@@ -280,6 +302,7 @@ function renderAdmin() {
           ${news.slice(0, 4).map((item) => `<div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.category)}</span></div>`).join("")}
         </div>
       </div>
+      
       <div class="split">
         <div>
           <h3>Payment Records</h3>
@@ -287,18 +310,19 @@ function renderAdmin() {
         </div>
         <div>
           <h3>Verification Email Log</h3>
-          ${messages.map((message) => `<div class="receipt"><strong>${message.phone}</strong><p>${message.text}</p></div>`).join("") || `<p class="muted">No verification emails sent yet.</p>`}
+          ${messages.map((message) => `<div class="receipt"><strong>${escapeHtml(message.phone)}</strong><p>${escapeHtml(message.text)}</p></div>`).join("") || `<p class="muted">No verification emails sent yet.</p>`}
         </div>
       </div>
     </div>`;
 
-  $("#filterStatus").addEventListener("change", updateAdminTable);
-  $("#filterClass").addEventListener("change", updateAdminTable);
-  $("#searchStudent").addEventListener("input", updateAdminTable);
-  $("#exportCsv").addEventListener("click", exportCsv);
-  $("#createStudentForm").addEventListener("submit", createStudent);
-  $("#schoolForm").addEventListener("submit", updateSchool);
-  $("#newsForm").addEventListener("submit", createNews);
+  $("#filterStatus")?.addEventListener("change", updateAdminTable);
+  $("#filterClass")?.addEventListener("change", updateAdminTable);
+  $("#searchStudent")?.addEventListener("input", updateAdminTable);
+  $("#exportCsv")?.addEventListener("click", exportCsv);
+  $("#createStudentForm")?.addEventListener("submit", createStudent);
+  $("#schoolForm")?.addEventListener("submit", updateSchool);
+  $("#newsForm")?.addEventListener("submit", createNews);
+  
   bindStudentDeleteButtons();
 }
 
@@ -317,8 +341,11 @@ function filteredStudents() {
 }
 
 function updateAdminTable() {
-  $("#adminTable").innerHTML = renderStudentsTable(filteredStudents(), true);
-  bindStudentDeleteButtons();
+  const tableNode = $("#adminTable");
+  if (tableNode) {
+    tableNode.innerHTML = renderStudentsTable(filteredStudents(), true);
+    bindStudentDeleteButtons();
+  }
 }
 
 function bindStudentDeleteButtons() {
@@ -333,33 +360,40 @@ function bindStudentDeleteButtons() {
   });
 }
 
+// Fixed: Double quoting prevents CSV injection/shifting, setTimeout fixes WebKit aborts
 function exportCsv() {
   const headers = ["studentId", "name", "className", "totalFees", "paidAmount", "dueAmount", "status"];
-  const rows = filteredStudents().map((student) => headers.map((key) => `"${student[key]}"`).join(","));
+  
+  const escapeCsv = (val) => String(val ?? "").replace(/"/g, '""');
+  
+  const rows = filteredStudents().map((student) => 
+    headers.map((key) => `"${escapeCsv(student[key])}"`).join(",")
+  );
+  
   const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
+  
   link.href = url;
   link.download = "fee-records.csv";
   link.click();
-  URL.revokeObjectURL(url);
+  
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 async function createStudent(event) {
   event.preventDefault();
   const formData = Object.fromEntries(new FormData(event.currentTarget));
-  const message = $("#adminCreateMessage");
   try {
     const result = await api("/api/students", {
       method: "POST",
       body: formData,
     });
-    message.style.color = "var(--success)";
-    message.textContent = `Created ${result.student.studentId}. Parent and student credentials are ready.`;
+    showMessage("#adminCreateMessage", `Created ${result.student.studentId}. Parent and student credentials are ready.`, "success");
+    event.currentTarget.reset();
     await loadDashboard();
   } catch (error) {
-    message.style.color = "var(--danger)";
-    message.textContent = error.message;
+    showMessage("#adminCreateMessage", error.message, "error");
   }
 }
 
@@ -379,8 +413,9 @@ async function createNews(event) {
 }
 
 function renderParent() {
-  const { students, payments, school } = state.dashboard;
+  const { students, payments } = state.dashboard;
   const student = students[0];
+  
   $("#mainContent").innerHTML = `
     <div class="workspace">
       ${renderStudentsTable(students)}
@@ -394,7 +429,7 @@ function renderParent() {
           <form id="paymentForm" class="payment-grid">
             <label>Child
               <select name="studentId">
-                ${students.map((item) => `<option value="${item.studentId}">${item.name} (${item.studentId})</option>`).join("")}
+                ${students.map((item) => `<option value="${escapeHtml(item.studentId)}">${escapeHtml(item.name)} (${escapeHtml(item.studentId)})</option>`).join("")}
               </select>
             </label>
             <label>Amount
@@ -411,14 +446,13 @@ function renderParent() {
       </div>
     </div>`;
 
-  $("#paymentForm").addEventListener("submit", payFees);
+  $("#paymentForm")?.addEventListener("submit", payFees);
 }
 
-// --- FULLY SECURED RAZORPAY VERIFICATION ---
 async function payFees(event) {
   event.preventDefault();
   const payload = Object.fromEntries(new FormData(event.currentTarget));
-  const message = $("#paymentMessage");
+  showMessage("#paymentMessage", "Initializing secure gateway...", "default");
   
   try {
     const order = await api("/api/razorpay-order", {
@@ -442,8 +476,7 @@ async function payFees(event) {
       theme: { color: "#0d7668" },
       handler: async (response) => {
         try {
-          message.style.color = "var(--success)";
-          message.textContent = "Verifying secure payment receipt...";
+          showMessage("#paymentMessage", "Verifying secure payment receipt...", "success");
           
           await api("/api/payments", {
             method: "POST",
@@ -456,24 +489,21 @@ async function payFees(event) {
             },
           });
           
-          message.textContent = "Payment successful and cryptographically verified!";
+          showMessage("#paymentMessage", "Payment successful and cryptographically verified!", "success");
           setTimeout(() => loadDashboard(), 1500);
         } catch (err) {
-          message.style.color = "var(--danger)";
-          message.textContent = "Verification failed: " + err.message;
+          showMessage("#paymentMessage", "Verification failed: " + err.message, "error");
         }
       },
     });
 
     razorpay.on('payment.failed', function (response){
-       message.style.color = "var(--danger)";
-       message.textContent = "Payment Failed: " + response.error.description;
+       showMessage("#paymentMessage", "Payment Failed: " + response.error.description, "error");
     });
 
     razorpay.open();
   } catch (error) {
-    message.style.color = "var(--danger)";
-    message.textContent = error.message;
+    showMessage("#paymentMessage", error.message, "error");
   }
 }
 
@@ -502,27 +532,23 @@ function renderTeacher() {
 // FLUID AUTHENTICATION LISTENERS
 // ==========================================
 
-// Back/Toggle buttons
 $("#showForgotBtn")?.addEventListener("click", () => showAuthCard("forgot_req"));
 $("#backToLoginFromOtp")?.addEventListener("click", () => showAuthCard("login"));
 $("#backToLoginFromForgot")?.addEventListener("click", () => showAuthCard("login"));
 
-$("#logoutButton").addEventListener("click", async () => {
+$("#logoutButton")?.addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
   state.user = null;
   state.dashboard = null;
   showLogin();
 });
 
-// 1. Login Form Submit
 $("#loginForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const msgNode = $("#authMessage");
-  msgNode.style.color = "inherit";
-  msgNode.textContent = "Authenticating..."; 
+  showMessage("#authMessage", "Authenticating...", "default"); 
   
-  const email = $("#email").value;
-  const password = $("#password").value;
+  const email = $("#email")?.value;
+  const password = $("#password")?.value;
 
   try {
     const result = await api("/api/login", {
@@ -533,81 +559,69 @@ $("#loginForm")?.addEventListener("submit", async (event) => {
     if (result.requiresOtp) {
       state.challengeId = result.challengeId;
       showAuthCard("otp");
-      $("#otpHelp").textContent = `Code sent securely to ${result.email}. Valid for 5 mins.`;
-      $("#otpCode").value = "";
-      msgNode.textContent = ""; 
+      const helpNode = $("#otpHelp");
+      if (helpNode) helpNode.textContent = `Code sent securely to ${result.email}. Valid for 5 mins.`;
+      
+      const otpCodeNode = $("#otpCode");
+      if (otpCodeNode) otpCodeNode.value = "";
+      
+      showMessage("#authMessage", ""); 
       return;
     }
     await loadDashboard();
   } catch (error) {
-    msgNode.style.color = "var(--danger)";
-    msgNode.textContent = error.message;
+    showMessage("#authMessage", error.message, "error");
   }
 });
 
-// 2. OTP Form Submit
 $("#otpForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const msgNode = $("#authMessage");
-  msgNode.style.color = "inherit";
-  msgNode.textContent = "Verifying...";
+  showMessage("#authMessage", "Verifying...", "default");
 
   try {
     await api("/api/verify-otp", {
       method: "POST",
-      body: { challengeId: state.challengeId, smsOtp: $("#otpCode").value },
+      body: { challengeId: state.challengeId, smsOtp: $("#otpCode")?.value },
     });
     await loadDashboard();
   } catch (error) {
-    msgNode.style.color = "var(--danger)";
-    msgNode.textContent = error.message;
+    showMessage("#authMessage", error.message, "error");
   }
 });
 
-// 3. Request Password Reset Submit
 $("#forgotRequestForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const email = $("#forgotEmail").value;
-  const msgNode = $("#authMessage");
-  
-  msgNode.style.color = "inherit";
-  msgNode.textContent = "Sending secure reset code...";
+  const email = $("#forgotEmail")?.value;
+  showMessage("#authMessage", "Sending secure reset code...", "default");
   
   try {
     const res = await api("/api/forgot-password", { method: "POST", body: { email } });
     state.challengeId = res.challengeId; 
     showAuthCard("forgot_reset");
-    msgNode.textContent = "";
+    showMessage("#authMessage", "");
   } catch (err) {
-    msgNode.style.color = "var(--danger)";
-    msgNode.textContent = err.message;
+    showMessage("#authMessage", err.message, "error");
   }
 });
 
-// 4. Update New Password Submit
 $("#forgotResetForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const otp = $("#forgotOtp").value;
-  const newPassword = $("#forgotNewPassword").value;
-  const msgNode = $("#authMessage");
-  
-  msgNode.style.color = "inherit";
-  msgNode.textContent = "Updating password...";
+  const otp = $("#forgotOtp")?.value;
+  const newPassword = $("#forgotNewPassword")?.value;
+  showMessage("#authMessage", "Updating password...", "default");
   
   try {
     await api("/api/reset-password", { 
       method: "POST", 
       body: { challengeId: state.challengeId, otp, newPassword } 
     });
-    msgNode.style.color = "var(--success)";
-    msgNode.textContent = "Password updated! Redirecting to login...";
+    showMessage("#authMessage", "Password updated! Redirecting to login...", "success");
     setTimeout(() => {
       showAuthCard("login");
-      msgNode.textContent = "";
+      showMessage("#authMessage", "");
     }, 2000); 
   } catch (err) {
-    msgNode.style.color = "var(--danger)";
-    msgNode.textContent = err.message;
+    showMessage("#authMessage", err.message, "error");
   }
 });
 
@@ -622,6 +636,7 @@ document.querySelectorAll(".gallery-filter").forEach((button) => {
       .querySelectorAll(".gallery-filter")
       .forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
+    
     document.querySelectorAll(".photo-card").forEach((card) => {
       card.classList.toggle(
         "is-hidden",
@@ -683,25 +698,27 @@ api("/api/public")
   .then(({ news }) => renderNewsItems(news))
   .catch(() => renderNewsItems([]));
 
-// --- FIX NAVIGATION & SCROLLING ---
-document.querySelectorAll('a[href^="#"]').forEach(link => {
-  link.addEventListener('click', (e) => {
-    const targetId = link.getAttribute('href');
+// Fixed: Smooth scrolling ID reference logic
+document.querySelectorAll('a[href^="#"]').forEach((link) => {
+  link.addEventListener("click", (e) => {
+    const targetId = link.getAttribute("href");
     
-    // 1. Stop the browser from getting confused
     e.preventDefault();
 
-    // 2. If the user is in the portal, bring the public website back so they can see the sections
-    if ($("#publicWebsite").hidden) {
+    // Guard against bare '#' hrefs causing an exception
+    if (targetId === "#") return; 
+
+    const publicWeb = $("#publicWebsite");
+    if (publicWeb && publicWeb.hidden) {
       showLogin(); 
     }
 
-    // 3. Find the exact section and force a smooth scroll to it
-    const targetElement = document.querySelector(targetId);
+    // Strip the '#' and use getElementById to avoid querySelector selector errors
+    const elementId = targetId.substring(1);
+    const targetElement = document.getElementById(elementId);
+    
     if (targetElement) {
-      targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      
-      // Optional: update the URL bar to look professional without reloading the page
+      targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
       history.pushState(null, null, targetId);
     }
   });

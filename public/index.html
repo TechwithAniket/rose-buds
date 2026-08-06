@@ -5,19 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Rose Buds Public School</title>
     <link rel="stylesheet" href="/styles.css" />
+    
+    <!-- Modern Best Practice: Pre-load the payment gateway -->
+    <link rel="preconnect" href="https://checkout.razorpay.com" />
   </head>
   <body>
     <main class="app-shell">
       <header class="site-header">
-        <a
-          class="brand-mark"
-          href="#top"
-          aria-label="Rose Buds Public School home"
-        >
-          <img
-            src="/assets/rose-buds-logo.png"
-            alt="Rose Buds Public School logo"
-          />
+        <a class="brand-mark" href="#top" aria-label="Rose Buds Public School home">
+          <img src="/assets/rose-buds-logo.png" alt="Rose Buds Public School logo" />
           <span>
             Rose Buds Public School
             <small>Chheharta, Amritsar</small>
@@ -51,12 +47,8 @@
             </div>
             <div class="hero-actions">
               <a class="button-link" href="#authView">Open Portal</a>
-              <a class="button-link secondary-link" href="#gallery"
-                >Explore Campus</a
-              >
-              <a class="button-link secondary-link" href="#contact"
-                >Contact Office</a
-              >
+              <a class="button-link secondary-link" href="#gallery">Explore Campus</a>
+              <a class="button-link secondary-link" href="#contact">Contact Office</a>
             </div>
           </div>
           <div class="premium-showcase" data-tilt aria-label="School overview">
@@ -68,17 +60,11 @@
             </div>
             <div class="showcase-grid">
               <div class="showcase-logo">
-                <img
-                  src="/assets/rose-buds-logo.png"
-                  alt="Rose Buds Public School emblem"
-                />
+                <img src="/assets/rose-buds-logo.png" alt="Rose Buds Public School emblem" />
                 <strong>Character is the greatest virtue.</strong>
               </div>
               <div class="showcase-photo">
-                <img
-                  src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80"
-                  alt="Classroom learning"
-                />
+                <img src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80" alt="Classroom learning" />
               </div>
               <div class="showcase-metric">
                 <span>Founded</span>
@@ -118,10 +104,7 @@
         <section class="operations-strip" aria-label="Portal capabilities">
           <div>
             <strong>UPI Fee Payments</strong>
-            <span
-              >Parent payments through Razorpay UPI checkout with instant
-              receipts</span
-            >
+            <span>Parent payments through Razorpay UPI checkout with instant receipts</span>
           </div>
           <div>
             <strong>Secure Access</strong>
@@ -129,10 +112,7 @@
           </div>
           <div>
             <strong>Complete Records</strong>
-            <span
-              >View fees, payments, receipts, and student information in one
-              place</span
-            >
+            <span>View fees, payments, receipts, and student information in one place</span>
           </div>
         </section>
 
@@ -152,26 +132,17 @@
             <article>
               <span>01</span>
               <strong>Enquiry</strong>
-              <p>
-                Parents contact the office or visit the school with basic
-                student details.
-              </p>
+              <p>Parents contact the office or visit the school with basic student details.</p>
             </article>
             <article>
               <span>02</span>
               <strong>School Visit</strong>
-              <p>
-                Families understand facilities, learning approach, activities,
-                and class availability.
-              </p>
+              <p>Families understand facilities, learning approach, activities, and class availability.</p>
             </article>
             <article>
               <span>03</span>
               <strong>Account Issued</strong>
-              <p>
-                The school creates student and parent portal accounts after
-                admission approval.
-              </p>
+              <p>The school creates student and parent portal accounts after admission approval.</p>
             </article>
           </div>
         </section>
@@ -179,9 +150,7 @@
         <section class="campus-showcase" id="gallery">
           <div class="section-head">
             <p class="eyebrow">Campus life</p>
-            <h2>
-              Colorful learning, sports, labs, and everyday school moments
-            </h2>
+            <h2>Colorful learning, sports, labs, and everyday school moments</h2>
             <p>
               Public listings show classroom, extra-curricular, sports, lab, and
               user-submitted photo categories for Rose Buds Public School. The
@@ -189,51 +158,35 @@
             </p>
           </div>
           <div class="gallery-controls" aria-label="Gallery filters">
-            <button class="gallery-filter active" data-gallery="all">
-              All
-            </button>
-            <button class="gallery-filter" data-gallery="classroom">
-              Classroom
-            </button>
+            <button class="gallery-filter active" data-gallery="all">All</button>
+            <button class="gallery-filter" data-gallery="classroom">Classroom</button>
             <button class="gallery-filter" data-gallery="sports">Sports</button>
             <button class="gallery-filter" data-gallery="lab">Lab</button>
           </div>
           <div class="photo-grid">
             <article class="photo-card tall" data-category="classroom">
-              <img
-                src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1000&q=80"
-                alt="Bright classroom learning environment"
-              />
+              <img src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1000&q=80" alt="Bright classroom learning environment" />
               <div>
                 <span>Classroom</span>
                 <strong>Focused academic learning</strong>
               </div>
             </article>
             <article class="photo-card" data-category="sports">
-              <img
-                src="https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=900&q=80"
-                alt="Students playing outdoor sports"
-              />
+              <img src="https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=900&q=80" alt="Students playing outdoor sports" />
               <div>
                 <span>Sports</span>
                 <strong>Karate, skating, yoga, games</strong>
               </div>
             </article>
             <article class="photo-card" data-category="lab">
-              <img
-                src="https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80"
-                alt="Science lab learning setup"
-              />
+              <img src="https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80" alt="Science lab learning setup" />
               <div>
                 <span>Lab</span>
                 <strong>Practical discovery</strong>
               </div>
             </article>
             <article class="photo-card wide" data-category="classroom">
-              <img
-                src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1100&q=80"
-                alt="Teacher helping students in class"
-              />
+              <img src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1100&q=80" alt="Teacher helping students in class" />
               <div>
                 <span>School Day</span>
                 <strong>Guided by trained staff</strong>
@@ -246,10 +199,7 @@
           <div class="section-head">
             <p class="eyebrow">Gallery & News</p>
             <h2>School moments, competition wins, and campus updates</h2>
-            <p>
-              Latest achievements and activities can be posted by the school
-              from the admin portal.
-            </p>
+            <p>Latest achievements and activities can be posted by the school from the admin portal.</p>
           </div>
           <div id="newsGrid" class="news-grid"></div>
         </section>
@@ -274,10 +224,7 @@
               </div>
               <div>
                 <h3>Vision</h3>
-                <p>
-                  A nurturing ground for lifelong learners to explore, create,
-                  and thrive.
-                </p>
+                <p>A nurturing ground for lifelong learners to explore, create, and thrive.</p>
               </div>
             </div>
           </div>
@@ -309,26 +256,17 @@
             <div>
               <span>01</span>
               <strong>School-created accounts</strong>
-              <p>
-                Parent and student accounts are issued by the office, keeping
-                records controlled and clean.
-              </p>
+              <p>Parent and student accounts are issued by the office, keeping records controlled and clean.</p>
             </div>
             <div>
               <span>02</span>
               <strong>Parent payment portal</strong>
-              <p>
-                Parents view their child, dues, payment details, and receipts in
-                one place.
-              </p>
+              <p>Parents view their child, dues, payment details, and receipts in one place.</p>
             </div>
             <div>
               <span>03</span>
               <strong>Online fee payments</strong>
-              <p>
-                Secure UPI-based payment system for convenient school fee
-                transactions.
-              </p>
+              <p>Secure UPI-based payment system for convenient school fee transactions.</p>
             </div>
           </div>
         </section>
@@ -336,39 +274,24 @@
         <section class="trust-section">
           <div class="section-head">
             <p class="eyebrow">Why families trust Rose Buds</p>
-            <h2>
-              A balanced school experience with academics, values, activities,
-              and visibility
-            </h2>
+            <h2>A balanced school experience with academics, values, activities, and visibility</h2>
           </div>
           <div class="trust-grid">
             <article>
               <span>Academic Care</span>
-              <strong
-                >Structured learning with regular examinations and trained
-                staff.</strong
-              >
+              <strong>Structured learning with regular examinations and trained staff.</strong>
             </article>
             <article>
               <span>Parent Visibility</span>
-              <strong
-                >Parents can view dues, receipts, and student-linked fee
-                records.</strong
-              >
+              <strong>Parents can view dues, receipts, and student-linked fee records.</strong>
             </article>
             <article>
               <span>Activities</span>
-              <strong
-                >Sports, yoga, music, dance, karate, skating, and co-curricular
-                growth.</strong
-              >
+              <strong>Sports, yoga, music, dance, karate, skating, and co-curricular growth.</strong>
             </article>
             <article>
               <span>Administration</span>
-              <strong
-                >School-controlled accounts keep student data clean and
-                secure.</strong
-              >
+              <strong>School-controlled accounts keep student data clean and secure.</strong>
             </article>
           </div>
         </section>
@@ -379,23 +302,11 @@
             <h2>Visit or contact the school office</h2>
           </div>
           <div class="contact-grid">
-            <p>
-              <strong>Address:</strong> Opp. Gayatri Temple, Raj Avenue, Kale
-              Road, Chheharta, Amritsar.
-            </p>
+            <p><strong>Address:</strong> Opp. Gayatri Temple, Raj Avenue, Kale Road, Chheharta, Amritsar.</p>
             <p><strong>Phone:</strong> +91 94630 11687</p>
             <p><strong>Email:</strong> sims_rosebuds@yahoo.com</p>
-            <p>
-              <strong>Hours:</strong> Summer 07:40 AM - 02:00 PM | Winter 08:15
-              AM - 02:30 PM
-            </p>
-            <a
-              class="button-link"
-              href="https://www.bing.com/maps/search?name=Rose+Buds+Public+School&ppois=31.636823654174805_74.80619812011719_Rose+Buds+Public+School"
-              target="_blank"
-              rel="noreferrer"
-              >Open Map</a
-            >
+            <p><strong>Hours:</strong> Summer 07:40 AM - 02:00 PM | Winter 08:15 AM - 02:30 PM</p>
+            <a class="button-link" href="https://www.bing.com/maps/search?name=Rose+Buds+Public+School&ppois=31.636823654174805_74.80619812011719_Rose+Buds+Public+School" target="_blank" rel="noreferrer">Open Map</a>
           </div>
         </section>
 
@@ -407,38 +318,24 @@
           <div class="faq-list">
             <button class="faq-item" type="button">
               <span>Who creates parent and student accounts?</span>
-              <strong
-                >School authority only. Families login after the school office
-                issues credentials.</strong
-              >
+              <strong>School authority only. Families login after the school office issues credentials.</strong>
             </button>
             <button class="faq-item" type="button">
               <span>Can parents pay fees online?</span>
-              <strong
-                >Yes. Parents can view their child, fee due, bank details, UPI
-                details, and pay through the secure portal.</strong
-              >
+              <strong>Yes. Parents can view their child, fee due, bank details, UPI details, and pay through the secure portal.</strong>
             </button>
             <button class="faq-item" type="button">
               <span>How long does OTP verification take?</span>
-              <strong
-                >Email OTP is sent instantly. Verify within 5 minutes to access
-                your account.</strong
-              >
+              <strong>Email OTP is sent instantly. Verify within 5 minutes to access your account.</strong>
             </button>
           </div>
         </section>
 
         <footer class="site-footer">
           <div>
-            <img
-              src="/assets/rose-buds-logo.png"
-              alt="Rose Buds Public School logo"
-            />
+            <img src="/assets/rose-buds-logo.png" alt="Rose Buds Public School logo" />
             <h2>Rose Buds Public School</h2>
-            <p>
-              Opp. Gayatri Temple, Raj Avenue, Kale Road, Chheharta, Amritsar.
-            </p>
+            <p>Opp. Gayatri Temple, Raj Avenue, Kale Road, Chheharta, Amritsar.</p>
           </div>
           <div class="footer-links">
             <a href="#admissions">Admissions</a>
@@ -489,14 +386,7 @@
             <h2>Portal Login</h2>
             <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 15px;">Enter your credentials to continue.</p>
             <form id="loginForm">
-              <label>Role
-                <select id="roleHint" required>
-                  <option value="">Select portal role</option>
-                  <option value="student">Student</option>
-                  <option value="parent">Parent</option>
-                  <option value="teacher">Teacher</option>
-                </select>
-              </label>
+              <!-- Removed the useless 'roleHint' select to match app.js behavior -->
               <label>Email<input id="email" type="email" autocomplete="username" required /></label>
               <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
               <div style="text-align: right; margin-top: -10px; margin-bottom: 15px;">
@@ -531,15 +421,13 @@
             <form id="forgotResetForm" hidden>
               <p class="muted">Check your email for the code.</p>
               <label>6-Digit Code<input id="forgotOtp" inputmode="numeric" maxlength="6" required /></label>
-              <label>New Password<input id="forgotNewPassword" type="password" required minlength="6" /></label>
+              <label>New Password<input id="forgotNewPassword" type="password" required minlength="6" autocomplete="new-password" /></label>
               <button type="submit">Update Password</button>
             </form>
           </div>
 
-          <!-- SHARED MESSAGES & ADMIN LINK -->
           <p id="authMessage" class="message"></p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0" />
-          <a href="/admin" style="display: block; border: 2px solid #059669; color: #059669; padding: 0.7rem; border-radius: 12px; text-decoration: none; font-weight: 700; text-align: center; transition: all 0.2s;">Go to Admin Portal</a>
+          <!-- Removed hardcoded /admin link because app.js handles admin dashboard internally -->
         </div>
 
         <div class="demo-panel">
@@ -574,18 +462,6 @@
         <div id="mainContent"></div>
       </section>
     </main>
-
-    <template id="studentRowTemplate">
-      <tr>
-        <td data-field="studentId"></td>
-        <td data-field="name"></td>
-        <td data-field="className"></td>
-        <td data-field="totalFees"></td>
-        <td data-field="paidAmount"></td>
-        <td data-field="dueAmount"></td>
-        <td><span data-field="status" class="status-pill"></span></td>
-      </tr>
-    </template>
 
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="/app.js"></script>
