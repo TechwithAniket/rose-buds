@@ -237,36 +237,33 @@ async function handleApi(req, res) {
     // --- AUTHENTICATION ROUTES --- //
     
     if (route === "POST /api/login") {
-      if (!checkRateLimit(req, 5, 15)) {
-        return sendJson(res, 429, { error: "Too many login attempts. Please try again in 15 minutes." });
-      }
-      
-      const body = await readBody(req);
-      const email = String(body.email || "").toLowerCase();
+  if (!checkRateLimit(req, "login", 5, 15)) {
+    return sendJson(res, 429, { error: "Too many login attempts. Please wait." });
+  }
 
-      const user = await prisma.user.findUnique({
-        where: { email: email }
-      });
+  const body = await readBody(req);
+  const email = String(body.email).toLowerCase();
+  
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    return sendJson(res, 401, { error: "Invalid email or password" });
+  }
 
-      if (!user) return sendJson(res, 401, { error: "Invalid email or password." });
+  const valid = await bcrypt.compare(body.password, user.passwordHash);
+  if (!valid) {
+    return sendJson(res, 401, { error: "Invalid email or password" });
+  }
 
-      const isValidPassword = await bcrypt.compare(String(body.password || ""), user.passwordHash);
-
-      if (!isValidPassword) {
-        return sendJson(res, 401, { error: "Invalid email or password." });
-      }
-
-     if (user.twoFactor) {
+  // --- THE NEW AUTO-OTP LOGIC ---
+  if (user.twoFactor) {
     const challengeId = crypto.randomUUID();
     const smsOtp = String(crypto.randomInt(100000, 999999));
 
-    // 1. Send the email instantly upon valid password!
     const emailSent = await dispatchOTP(user.email, smsOtp);
     if (!emailSent) {
-      return sendJson(res, 500, { error: "Failed to send OTP email. Check logs." });
+      return sendJson(res, 500, { error: "Failed to send OTP email. Check server logs." });
     }
 
-    // 2. Lock it in RAM
     pendingOtp.set(challengeId, {
       userId: user.id,
       method: "email",
@@ -274,34 +271,27 @@ async function handleApi(req, res) {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    // 3. Tell the frontend to show the OTP input
+    // This exact response triggers the frontend card to flip to the OTP section
     return sendJson(res, 200, {
       requiresOtp: true,
       challengeId,
-      email: user.email, // Send email back so the UI can say "Sent to..."
+      email: user.email,
       expiresInMinutes: 5,
     });
   }
 
-      const token = crypto.randomUUID();
-      
-      await prisma.session.create({
-        data: {
-          id: token,
-          userId: user.id,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
-        }
-      });
-      
-      const isProd = process.env.NODE_ENV === "production";
-      const cookieStr = `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800; ${isProd ? "Secure;" : ""}`;
+  // Admin Login (No 2FA)
+  const sessionToken = crypto.randomUUID();
+  sessions.set(sessionToken, { userId: user.id, role: user.role, expires: Date.now() + 8 * 3600000 });
+  
+  res.setHeader(
+    "Set-Cookie",
+    `session=${sessionToken}; HttpOnly; Path=/; Max-Age=28800; SameSite=Strict${process.env.NODE_ENV === "production" ? "; Secure" : ""}`
+  );
+  
+  return sendJson(res, 200, { success: true, requiresOtp: false });
+}
 
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Set-Cookie": cookieStr,
-      });
-      return res.end(JSON.stringify({ user: publicUser(user) }));
-    }
 if (route === "POST /api/request-otp") {
       // 1. Separate bucket for OTP requests (limit 10 for testing)
       if (!checkRateLimit(req, "request_otp", 10, 15)) {
