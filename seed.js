@@ -18,7 +18,7 @@ async function main() {
       email: "admin@rbps.test",
       phone: "+919876543210",
       passwordHash: hashPassword("Admin@123"),
-      twoFactor: false,
+      twoFactor: true,
     }
   });
 
