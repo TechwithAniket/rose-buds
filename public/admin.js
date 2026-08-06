@@ -16,32 +16,12 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function setAdminMessage(text, isError = true) {
-  const node = $("#adminLoginMessage");
+function setAuthMessage(text, isError = true) {
+  const node = $("#adminAuthMessage");
   if (node) {
     node.textContent = text || "";
     node.style.color = isError ? "#dc2626" : "#10b981";
   }
-}
-
-function setAdminOtpMessage(text, isError = true) {
-  const node = $("#adminOtpMessage");
-  if (node) {
-    node.textContent = text || "";
-    node.style.color = isError ? "#dc2626" : "#10b981";
-  }
-}
-
-function resetAdminOtpFlow() {
-  state.challengeId = null;
-  $("#adminOtpChoiceForm").hidden = false;
-  $("#adminOtpForm").hidden = true;
-  $("#adminSmsOtpLabel").hidden = false;
-  $("#adminSmsOtp").required = true;
-  $("#adminSmsOtp").value = "";
-  $("#adminOtpHelp").textContent = "";
-  $("#adminOtpChoiceHelp").textContent = "";
-  setAdminOtpMessage("");
 }
 
 async function api(path, options = {}) {
@@ -55,36 +35,44 @@ async function api(path, options = {}) {
   return payload;
 }
 
+// --- SEAMLESS IN-CARD TRANSITIONS ---
+
 function showAdminLogin() {
-  $("#adminLoginView").style.display = "grid";
-  $("#adminOtpView").style.display = "none";
+  $("#adminAuthView").style.display = "grid";
   $("#adminPortalView").style.display = "none";
-  resetAdminOtpFlow();
+  
+  $("#adminLoginForm").hidden = false;
+  $("#adminOtpForm").hidden = true;
+  $("#adminAuthTitle").textContent = "Admin Login";
+  
+  $("#adminEmail").value = "";
+  $("#adminPassword").value = "";
+  state.challengeId = null;
+  setAuthMessage("");
 }
 
 function showAdminOtp() {
-  $("#adminLoginView").style.display = "none";
-  $("#adminOtpView").style.display = "grid";
-  $("#adminPortalView").style.display = "none";
+  $("#adminLoginForm").hidden = true;
+  $("#adminOtpForm").hidden = false;
+  $("#adminAuthTitle").textContent = "Security Check";
+  $("#adminSmsOtp").value = "";
+  setAuthMessage("");
 }
 
 function showAdminPortal() {
-  $("#adminLoginView").style.display = "none";
-  $("#adminOtpView").style.display = "none";
+  // Hides the auth card entirely and unhides the dashboard
+  $("#adminAuthView").style.display = "none";
   $("#adminPortalView").style.display = "block";
 }
 
+// --- AUTHENTICATION HANDLERS ---
+
 async function handleAdminLogin(e) {
   e.preventDefault();
-  setAdminMessage("");
+  setAuthMessage("Authenticating...", false);
 
   const email = $("#adminEmail").value.trim();
   const password = $("#adminPassword").value;
-
-  if (!email || !password) {
-    setAdminMessage("Email and password are required.", true);
-    return;
-  }
 
   try {
     const response = await api("/api/login", {
@@ -94,40 +82,21 @@ async function handleAdminLogin(e) {
 
     if (response.requiresOtp) {
       state.challengeId = response.challengeId;
-      $("#adminOtpChoiceHelp").textContent = `Registered email: ${response.email}`;
       showAdminOtp();
+      $("#adminOtpHelp").textContent = `Code sent securely to ${response.email}.`;
     } else {
       state.user = response.user;
       await loadAdminDashboard();
       showAdminPortal();
     }
   } catch (error) {
-    setAdminMessage(error.message, true);
-  }
-}
-
-async function handleAdminOtpRequest(e) {
-  e.preventDefault();
-  setAdminOtpMessage("");
-
-  try {
-    const response = await api("/api/request-otp", {
-      method: "POST",
-      body: { challengeId: state.challengeId },
-    });
-
-    $("#adminOtpChoiceHelp").textContent = response.delivery;
-    $("#adminOtpChoiceForm").hidden = true;
-    $("#adminOtpForm").hidden = false;
-    $("#adminOtpHelp").textContent = `OTP sent. Valid for ${response.expiresInMinutes} minutes.`;
-  } catch (error) {
-    setAdminOtpMessage(error.message, true);
+    setAuthMessage(error.message, true);
   }
 }
 
 async function handleAdminOtpVerify(e) {
   e.preventDefault();
-  setAdminOtpMessage("");
+  setAuthMessage("Verifying...", false);
 
   const smsOtp = $("#adminSmsOtp").value;
 
@@ -139,11 +108,25 @@ async function handleAdminOtpVerify(e) {
 
     state.user = response.user;
     await loadAdminDashboard();
-    showAdminPortal();
+    showAdminPortal(); // Success! Drop the forms, show portal immediately.
   } catch (error) {
-    setAdminOtpMessage(error.message, true);
+    setAuthMessage(error.message, true);
   }
 }
+
+async function handleAdminLogout() {
+  try {
+    await api("/api/logout", { method: "POST" });
+    state.challengeId = null;
+    state.dashboard = null;
+    state.user = null;
+    showAdminLogin();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// --- ADMIN DASHBOARD & CRUD ---
 
 async function loadAdminDashboard() {
   state.dashboard = await api("/api/dashboard");
@@ -151,10 +134,8 @@ async function loadAdminDashboard() {
   renderAdminPortal();
 }
 
-// --- SECURE CRUD FUNCTIONS (Removed from Global Window Object) ---
 async function deleteStudent(studentId) {
   if (!confirm(`Are you sure you want to completely delete ${studentId}?\nThis will destroy their user accounts and payment history.`)) return;
-  
   try {
     await api("/api/students", { method: "DELETE", body: { studentId } });
     await loadAdminDashboard();
@@ -169,17 +150,14 @@ function openEditModal(studentId) {
     alert("Error: Student not found in memory.");
     return;
   }
-
   $("#editStdId").value = student.studentId;
   $("#editStdName").value = student.name;
   $("#editStdClass").value = student.className;
   $("#editTotalFees").value = student.totalFees;
   $("#editPaidAmount").value = student.paidAmount;
   $("#editDueDate").value = student.dueDate || "";
-
   $("#editStudentModal").style.display = "grid";
 }
-// ------------------------------
 
 function renderAdminPortal() {
   const { user, students = [], payments = [] } = state.dashboard;
@@ -225,8 +203,6 @@ function renderAdminPortal() {
     </div>
   `;
 
-  // XSS PATCHED: Using escapeHtml on all dynamic row data
-  // EVENT DELEGATION: Using data-action and data-id instead of inline onclick
   const studentsTableHtml = `
     <div style="border: 1px solid #e5e7eb; border-radius: 12px; background: white; overflow-x: auto; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
       <table style="width: 100%; border-collapse: collapse;">
@@ -267,53 +243,32 @@ function renderAdminPortal() {
 
   $("#adminMainContent").innerHTML = summaryHtml + tableHeaderHtml + studentsTableHtml;
 
-  // Bind Add Student Button
-  $("#triggerAddStudentBtn").addEventListener("click", () => {
+  $("#triggerAddStudentBtn")?.addEventListener("click", () => {
     $("#addStudentModal").style.display = "grid";
   });
 
-  // Event Delegation for Edit/Delete Buttons
-  $("#studentsTableBody").addEventListener("click", (e) => {
+  $("#studentsTableBody")?.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
-
     const action = btn.dataset.action;
     const id = btn.dataset.id;
-
     if (action === "edit") openEditModal(id);
     if (action === "delete") deleteStudent(id);
   });
 }
 
-async function handleAdminLogout() {
-  try {
-    await api("/api/logout", { method: "POST" });
-    state.challengeId = null;
-    state.dashboard = null;
-    state.user = null;
-    showAdminLogin();
-    $("#adminEmail").value = "";
-    $("#adminPassword").value = "";
-  } catch (error) {
-    alert(error.message);
-  }
-}
+// --- EVENT LISTENERS INITIALIZATION ---
 
 document.addEventListener("DOMContentLoaded", async () => {
   $("#adminLoginForm")?.addEventListener("submit", handleAdminLogin);
-  $("#adminOtpChoiceForm")?.addEventListener("submit", handleAdminOtpRequest);
   $("#adminOtpForm")?.addEventListener("submit", handleAdminOtpVerify);
   $("#adminBackToLogin")?.addEventListener("click", () => showAdminLogin());
   $("#adminLogoutButton")?.addEventListener("click", handleAdminLogout);
 
-  // ADD STUDENT LOGIC
-  $("#closeModalBtn")?.addEventListener("click", () => {
-    $("#addStudentModal").style.display = "none";
-  });
-
+  // Modals Logic
+  $("#closeModalBtn")?.addEventListener("click", () => { $("#addStudentModal").style.display = "none"; });
   $("#addStudentForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    
     const body = {
       name: $("#newStdName").value.trim(),
       className: $("#newStdClass").value.trim(),
@@ -328,7 +283,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       paidAmount: $("#newPaidAmount").value,
       dueDate: $("#newDueDate").value,
     };
-
     try {
       const res = await api("/api/students", { method: "POST", body });
       e.target.reset();
@@ -340,14 +294,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // EDIT STUDENT LOGIC
-  $("#closeEditModalBtn")?.addEventListener("click", () => {
-    $("#editStudentModal").style.display = "none";
-  });
-
+  $("#closeEditModalBtn")?.addEventListener("click", () => { $("#editStudentModal").style.display = "none"; });
   $("#editStudentForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    
     const body = {
       studentId: $("#editStdId").value,
       name: $("#editStdName").value.trim(),
@@ -356,7 +305,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       paidAmount: $("#editPaidAmount").value,
       dueDate: $("#editDueDate").value,
     };
-
     try {
       await api("/api/students", { method: "PATCH", body });
       $("#editStudentModal").style.display = "none";
@@ -366,7 +314,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // AUTO-LOGIN: Check for existing session before showing login screen
+  // AUTO-LOGIN CHECK
   try {
     const { user } = await api("/api/me");
     if (user && user.role === "admin") {
